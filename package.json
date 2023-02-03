@@ -1,0 +1,13 @@
+{
+  "author": "Secret Place Studio",
+  "name": "sp.sframework.ecs.odin",
+  "displayName": "SF ECS Odin",
+  "version": "0.1.0",
+  "description": "LeoEcs Lite Module",
+  "keywords": [
+    "ecs",
+    "leoecs"
+  ],
+  "category": "SFramework",
+  "type": "library"
+}

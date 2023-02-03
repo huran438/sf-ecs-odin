@@ -1,0 +1,27 @@
+{
+    "name": "SFramework.ECS.Editor",
+    "rootNamespace": "SFramework.ECS.Editor",
+    "references": [
+        "SFramework.Core.Runtime",
+        "SFramework.Core.Editor",
+        "SFramework.ECS.Runtime"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "Sirenix.OdinInspector.Attributes.dll",
+        "Sirenix.OdinInspector.Editor.dll",
+        "Sirenix.Serialization.Config.dll",
+        "Sirenix.Serialization.dll",
+        "Sirenix.Utilities.dll",
+        "Sirenix.Utilities.Editor.dll"
+    ],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
