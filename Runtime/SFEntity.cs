@@ -1,10 +1,11 @@
 ﻿using Leopotam.EcsLite;
 using SFramework.Core.Runtime;
+using Sirenix.OdinInspector;
 using UnityEngine;
 
 namespace SFramework.ECS.Runtime
 {
-    [SFHideScriptField]
+    [HideMonoScript]
     [DisallowMultipleComponent]
     public sealed class SFEntity : SFView, ISFEntity
     {
@@ -16,6 +17,9 @@ namespace SFramework.ECS.Runtime
         [SFType(typeof(SFWorldsDatabase))]
         [SerializeField]
         private string _world;
+
+        [SerializeField]
+        private SFEntity _parentEntity;
 
         private EcsPackedEntityWithWorld _ecsPackedEntity;
         private bool _injected;
@@ -54,6 +58,15 @@ namespace SFramework.ECS.Runtime
                 value = _transform
             };
 
+            if (_parentEntity != null)
+            {
+                world.GetPool<ParentEntity>().Add(entity) = new ParentEntity
+                {
+                    value = _parentEntity.EcsPackedEntity
+                };
+            }
+
+
             foreach (var entitySetup in _components)
             {
                 entitySetup.Setup(ref _ecsPackedEntity);
@@ -66,8 +79,8 @@ namespace SFramework.ECS.Runtime
         {
             SFEntityMapping.RemoveMapping(gameObject);
 
-            if (_ecsPackedEntity.Unpack(out var _world, out var _entity))
-                _world.DelEntity(_entity);
+            if (_ecsPackedEntity.Unpack(out var world, out var entity))
+                world.DelEntity(entity);
 
             gameObject.SetActive(false);
             _activated = false;
@@ -76,6 +89,14 @@ namespace SFramework.ECS.Runtime
         private void OnDestroy()
         {
             Deactivate();
+        }
+
+        private void Reset()
+        {
+            if (transform.parent != null)
+            {
+                _parentEntity = transform.parent.GetComponent<SFEntity>();
+            }
         }
     }
 }
