@@ -13,11 +13,11 @@ namespace SFramework.ECS.Runtime
 
         [SFInject]
         private ISFWorldsService _worldsService;
-
-        [SFType(typeof(SFWorldsDatabase))]
+        
+        [SFWorld]
         [SerializeField]
         private string _world;
-
+        
         [SerializeField]
         private SFEntity _parentEntity;
 

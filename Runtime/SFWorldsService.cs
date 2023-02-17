@@ -4,6 +4,7 @@ using System.Linq;
 using Leopotam.EcsLite;
 using Leopotam.EcsLite.Di;
 using SFramework.Core.Runtime;
+using SFramework.Repositories.Runtime;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
@@ -39,56 +40,67 @@ namespace SFramework.ECS.Runtime
 
 
         [SFInject]
-        private void Init(SFWorldsDatabase database)
+        public void Init(ISFRepositoryProvider provider)
         {
-            if (database == null) return;
+            var _repository = provider.GetRepositories<SFWorldsRepository>().FirstOrDefault();
+
+            if (_repository == null) return;
 
             _defaultWorld = new EcsWorld();
 
-            foreach (SFWorldContainer worldContainer in database.Nodes)
+            foreach (SFWorldNode worldContainer in _repository.Nodes)
             {
                 AddWorldContainer(worldContainer);
             }
         }
 
-        private EcsWorld AddWorldContainer(SFWorldContainer worldContainer)
+        private EcsWorld AddWorldContainer(SFWorldNode worldNode)
         {
-            if (_ecsWorlds.ContainsKey(worldContainer.Name)) return null;
+            if (_ecsWorlds.ContainsKey(worldNode._Name)) return null;
 
             var world = new EcsWorld(new EcsWorld.Config
             {
-                Entities = worldContainer.Config.Entities,
-                RecycledEntities = worldContainer.Config.RecycledEntities,
-                Pools = worldContainer.Config.Pools,
-                Filters = worldContainer.Config.Filters,
-                PoolDenseSize = worldContainer.Config.PoolDenseSize,
-                PoolRecycledSize = worldContainer.Config.PoolRecycledSize,
-                EntityComponentsSize = worldContainer.Config.EntityComponentsSize
+                Entities = worldNode.Config.Entities,
+                RecycledEntities = worldNode.Config.RecycledEntities,
+                Pools = worldNode.Config.Pools,
+                Filters = worldNode.Config.Filters,
+                PoolDenseSize = worldNode.Config.PoolDenseSize,
+                PoolRecycledSize = worldNode.Config.PoolRecycledSize,
+                EntityComponentsSize = worldNode.Config.EntityComponentsSize
             });
 
             var fixedUpdateSystems = new EcsSystems(world, _container);
             var updateSystems = new EcsSystems(world, _container);
             var lateUpdateSystems = new EcsSystems(world, _container);
 
-            foreach (var system in worldContainer.FixedUpdateSystems)
+            foreach (var system in worldNode.FixedUpdateSystems)
             {
                 if (!system.Enabled) continue;
-                if (system.System == null) continue;
-                fixedUpdateSystems.Add(system.System);
+                var systemType = Type.GetType(system.System);
+                if (systemType == null) continue;
+                var systemInstance = Activator.CreateInstance(systemType) as IEcsSystem;
+                if (systemInstance == null) continue;
+                fixedUpdateSystems.Add(systemInstance);
             }
 
-            foreach (var system in worldContainer.UpdateSystems)
+            foreach (var system in worldNode.UpdateSystems)
             {
                 if (!system.Enabled) continue;
-                if (system.System == null) continue;
-                updateSystems.Add(system.System);
+                var systemType = Type.GetType(system.System);
+                if (systemType == null) continue;
+                var systemInstance = Activator.CreateInstance(systemType) as IEcsSystem;
+                if (systemInstance == null) continue;
+                updateSystems.Add(systemInstance);
             }
 
-            foreach (var system in worldContainer.LateUpdateSystems)
+            foreach (var system in worldNode.LateUpdateSystems)
             {
                 if (!system.Enabled) continue;
-                if (system.System == null) continue;
-                lateUpdateSystems.Add(system.System);
+                var systemType = Type.GetType(system.System);
+                if (systemType == null) continue;
+                var systemInstance = Activator.CreateInstance(systemType) as IEcsSystem;
+                if (systemInstance == null) continue;
+                lateUpdateSystems.Add(systemInstance);
             }
 
             fixedUpdateSystems.Inject().Init();
@@ -99,7 +111,7 @@ namespace SFramework.ECS.Runtime
             _fixedUpdateSystems.Add(fixedUpdateSystems);
             _updateSystems.Add(updateSystems);
             _lateUpdateSystems.Add(lateUpdateSystems);
-            _ecsWorlds[worldContainer.Name] = world;
+            _ecsWorlds[worldNode._Name] = world;
             return world;
         }
 
@@ -137,7 +149,6 @@ namespace SFramework.ECS.Runtime
             _callbacks.OnFixedUpdate -= FixedUpdate;
             _callbacks.OnUpdate -= Update;
             _callbacks.OnLateUpdate -= LateUpdate;
-            Object.Destroy(_callbacks.gameObject);
         }
     }
 }

@@ -2,25 +2,19 @@ using System;
 using Leopotam.EcsLite;
 using Sirenix.OdinInspector;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace SFramework.ECS.Runtime
 {
     [Serializable]
     public class SFSystemContainer
     {
-        public bool Enabled => _enabled;
-
-        public IEcsSystem System => _system;
-
-  
         [HideLabel]
         [HorizontalGroup]
-        [SerializeField]
-        private bool _enabled = true;
+        public bool Enabled = true;
         
         [HideLabel]
         [HorizontalGroup]
-        [SerializeReference]
-        public IEcsSystem _system;
+        public string System;
     }
 }
