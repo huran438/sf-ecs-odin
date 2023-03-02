@@ -13,33 +13,27 @@ namespace SFramework.ECS.Runtime
 
         [SFInject]
         private ISFWorldsService _worldsService;
-        
+
         [SFWorld]
         [SerializeField]
         private string _world;
-        
+
         [SerializeField]
         private SFEntity _parentEntity;
 
         private EcsPackedEntityWithWorld _ecsPackedEntity;
         private bool _injected;
         private ISFEntitySetup[] _components;
-        private bool _activated;
 
         protected override void Init()
         {
             if (_injected) return;
             _components = GetComponents<ISFEntitySetup>();
-            Activate();
             _injected = true;
         }
 
-        public void Activate()
+        public void OnEnable()
         {
-            if (_activated) return;
-
-            gameObject.SetActive(true);
-
             var world = _worldsService.GetWorld(_world);
             var entity = world.NewEntity();
             _ecsPackedEntity = world.PackEntityWithWorld(entity);
@@ -66,29 +60,19 @@ namespace SFramework.ECS.Runtime
                 };
             }
 
-
             foreach (var entitySetup in _components)
             {
                 entitySetup.Setup(ref _ecsPackedEntity);
             }
 
-            _activated = true;
         }
 
-        public void Deactivate()
+        public void OnDisable()
         {
             SFEntityMapping.RemoveMapping(gameObject);
 
             if (_ecsPackedEntity.Unpack(out var world, out var entity))
                 world.DelEntity(entity);
-
-            gameObject.SetActive(false);
-            _activated = false;
-        }
-
-        private void OnDestroy()
-        {
-            Deactivate();
         }
 
         private void Reset()
