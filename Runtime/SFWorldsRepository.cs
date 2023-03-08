@@ -18,7 +18,7 @@ namespace SFramework.ECS.Runtime
                 new SFGenerationData
                 {
                     FileName = "SFWorlds",
-                    Properties = Worlds.Select(o => $"{_Name}/{o._Name}").ToHashSet()
+                    Properties = Worlds.Select(o => $"{Name}/{o.Name}").ToHashSet()
                 }
             };
         }

@@ -56,7 +56,7 @@ namespace SFramework.ECS.Runtime
 
         private EcsWorld AddWorldContainer(SFWorldNode worldNode)
         {
-            if (_ecsWorlds.ContainsKey(worldNode._Name)) return null;
+            if (_ecsWorlds.ContainsKey(worldNode.Name)) return null;
 
             var world = new EcsWorld(new EcsWorld.Config
             {
@@ -111,7 +111,7 @@ namespace SFramework.ECS.Runtime
             _fixedUpdateSystems.Add(fixedUpdateSystems);
             _updateSystems.Add(updateSystems);
             _lateUpdateSystems.Add(lateUpdateSystems);
-            _ecsWorlds[worldNode._Name] = world;
+            _ecsWorlds[worldNode.Name] = world;
             return world;
         }
 
