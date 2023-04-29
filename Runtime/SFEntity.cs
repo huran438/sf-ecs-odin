@@ -17,10 +17,7 @@ namespace SFramework.ECS.Runtime
         [SFWorld]
         [SerializeField]
         private string _world;
-
-        [SerializeField]
-        private SFEntity _parentEntity;
-
+        
         private EcsPackedEntityWithWorld _ecsPackedEntity;
         private bool _injected;
         private ISFEntitySetup[] _components;
@@ -51,15 +48,7 @@ namespace SFramework.ECS.Runtime
             {
                 value = _transform
             };
-
-            if (_parentEntity != null)
-            {
-                world.GetPool<ParentEntity>().Add(entity) = new ParentEntity
-                {
-                    value = _parentEntity.EcsPackedEntity
-                };
-            }
-
+            
             foreach (var entitySetup in _components)
             {
                 entitySetup.Setup(ref _ecsPackedEntity);
@@ -73,14 +62,6 @@ namespace SFramework.ECS.Runtime
 
             if (_ecsPackedEntity.Unpack(out var world, out var entity))
                 world.DelEntity(entity);
-        }
-
-        private void Reset()
-        {
-            if (transform.parent != null)
-            {
-                _parentEntity = transform.parent.GetComponent<SFEntity>();
-            }
         }
     }
 }
