@@ -1,6 +1,5 @@
 using System;
 using Leopotam.EcsLite;
-using SFramework.Core.Runtime;
 using Sirenix.OdinInspector;
 using UnityEngine;
 
@@ -28,5 +27,25 @@ namespace SFramework.ECS.Runtime
                 world.GetPool<T>().Add(entity) = _value;
             }
         }
+
+#if UNITY_EDITOR
+
+        protected virtual void OnDrawGizmos()
+        {
+            if (typeof(ISFDrawGizmos).IsAssignableFrom(typeof(T)))
+            {
+                (_value as ISFDrawGizmos).DrawGizmos(transform);
+            }
+        }
+
+        protected virtual void OnDrawGizmosSelected()
+        {
+            if (typeof(ISFDrawGizmosSelected).IsAssignableFrom(typeof(T)))
+            {
+                (_value as ISFDrawGizmosSelected).DrawGizmosSelected(transform);
+            }
+        }
+
+#endif
     }
 }
