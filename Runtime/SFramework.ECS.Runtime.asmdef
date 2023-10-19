@@ -2,7 +2,7 @@
     "name": "SFramework.ECS.Runtime",
     "rootNamespace": "SFramework.ECS.Runtime",
     "references": [
-        "SFramework.Repositories.Runtime",
+        "SFramework.Configs.Runtime",
         "SFramework.Core.Runtime",
         "Leopotam.EcsLite",
         "Leopotam.EcsLite.Di"

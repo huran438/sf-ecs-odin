@@ -1,11 +1,10 @@
-﻿using SFramework.Core.Runtime;
-using SFramework.Repositories.Runtime;
+﻿using SFramework.Configs.Runtime;
 
 namespace SFramework.ECS.Runtime
 {
     public class SFWorldAttribute : SFIdAttribute
     {
-        public SFWorldAttribute() : base(typeof(SFWorldsRepository), -1)
+        public SFWorldAttribute() : base(typeof(SFWorldsConfig), -1)
         {
         }
     }

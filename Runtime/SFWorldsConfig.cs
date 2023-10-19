@@ -1,13 +1,12 @@
 using System.Linq;
+using SFramework.Configs.Runtime;
 using SFramework.Core.Runtime;
-using SFramework.Repositories.Runtime;
-using UnityEngine;
 
 namespace SFramework.ECS.Runtime
 {
-    public class SFWorldsRepository : SFRepository, ISFRepositoryGenerator
+    public class SFWorldsConfig : SFConfig, ISFConfigsGenerator
     {
-        public override ISFNode[] Nodes => Worlds;
+        public override ISFConfigNode[] Nodes => Worlds;
 
         public SFWorldNode[] Worlds;
 

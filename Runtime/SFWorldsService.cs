@@ -3,18 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using Leopotam.EcsLite;
 using Leopotam.EcsLite.Di;
-using SFramework.Core.Runtime;
-using SFramework.Repositories.Runtime;
+using SFramework.Configs.Runtime;
 using UnityEngine;
-using Object = UnityEngine.Object;
 
 namespace SFramework.ECS.Runtime
 {
-    public class SFWorldsService : ISFWorldsService, IDisposable
+    public class SFWorldsService : ISFWorldsService
     {
-        [SFInject]
-        private readonly ISFContainer _container;
-
         private readonly Dictionary<string, EcsWorld> _ecsWorlds = new();
         private readonly List<EcsSystems> _lateUpdateSystems = new();
         private readonly List<EcsSystems> _updateSystems = new();
@@ -26,28 +21,18 @@ namespace SFramework.ECS.Runtime
 
         public EcsWorld GetWorld(string name = "")
         {
-            return _ecsWorlds.ContainsKey(name) ? _ecsWorlds[name] : _defaultWorld;
+            return _ecsWorlds.TryGetValue(name, out var world) ? world : _defaultWorld;
         }
 
-
-        public SFWorldsService()
+        SFWorldsService(ISFConfigsService provider)
         {
+            _defaultWorld = new EcsWorld();
             _callbacks = new GameObject("SF_ECS_CALLBACKS").AddComponent<SFECSCallbacks>();
             _callbacks.OnFixedUpdate += FixedUpdate;
             _callbacks.OnUpdate += Update;
             _callbacks.OnLateUpdate += LateUpdate;
-        }
-
-
-        [SFInject]
-        public void Init(ISFRepositoryProvider provider)
-        {
-            var _repository = provider.GetRepositories<SFWorldsRepository>().FirstOrDefault();
-
+            var _repository = provider.GetRepositories<SFWorldsConfig>().FirstOrDefault();
             if (_repository == null) return;
-
-            _defaultWorld = new EcsWorld();
-
             foreach (SFWorldNode worldContainer in _repository.Nodes)
             {
                 AddWorldContainer(worldContainer);
@@ -69,9 +54,9 @@ namespace SFramework.ECS.Runtime
                 EntityComponentsSize = worldNode.Config.EntityComponentsSize
             });
 
-            var fixedUpdateSystems = new EcsSystems(world, _container);
-            var updateSystems = new EcsSystems(world, _container);
-            var lateUpdateSystems = new EcsSystems(world, _container);
+            var fixedUpdateSystems = new EcsSystems(world);
+            var updateSystems = new EcsSystems(world);
+            var lateUpdateSystems = new EcsSystems(world);
 
             foreach (var system in worldNode.FixedUpdateSystems)
             {

@@ -1,5 +1,4 @@
-﻿using System;
-using Leopotam.EcsLite;
+﻿using Leopotam.EcsLite;
 using SFramework.Core.Runtime;
 
 namespace SFramework.ECS.Runtime
@@ -8,7 +7,7 @@ namespace SFramework.ECS.Runtime
     {
         public void PreInit(IEcsSystems systems)
         {
-            systems.GetShared<ISFContainer>().Inject(this);
+            this.Inject();
         }
 
         public void Run(IEcsSystems systems)
