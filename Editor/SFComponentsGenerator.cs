@@ -16,7 +16,6 @@ namespace SFramework.ECS.Editor
     {
         private static string providerFileTemplate =
             @"using SFramework.ECS.Runtime;
-using @@COMPONENTNAMESPACE@@;
 using UnityEngine;
 using Sirenix.OdinInspector;
 
@@ -39,49 +38,39 @@ namespace @@NAMESPACE@@
 
         public static void Generate(bool force = false)
         {
-            var settings = AssetDatabase.LoadAssetAtPath<SFCoreSettings>(SFCoreSettings._assetPath);
-
             var authoringsToGenerate = AppDomain.CurrentDomain.GetAssemblies()
                 .SelectMany(a => a.GetTypes())
                 .Where(t => t.IsValueType && t.GetCustomAttribute<SFGenerateComponentAttribute>() != null)
                 .ToList();
 
-            var dirPath = Path.GetFullPath(Path.Combine(
-                    Application.dataPath + Path.DirectorySeparatorChar + settings.GeneratorScriptsPath));
-
-            if (!Directory.Exists(dirPath))
-            {
-                Directory.CreateDirectory(dirPath);
-                AssetDatabase.Refresh();
-            }
-
             foreach (var type in authoringsToGenerate)
             {
-                var providerClassName = $"_{type.Name}";
-                var providerFileName = $"{providerClassName}.cs";
+                var filter = $"t:Script {type.Name}";
+                var pathOfAsset = AssetDatabase.FindAssets(filter).Select(AssetDatabase.GUIDToAssetPath)
+                    .FirstOrDefault(p => p.EndsWith($"/{type.Name}.cs"));
 
-                var path = Path
-                    .GetFullPath(Path.Combine(
-                        Application.dataPath + Path.DirectorySeparatorChar + settings.GeneratorScriptsPath,
-                        providerFileName));
+                if (string.IsNullOrEmpty(pathOfAsset))
+                {
+                    Debug.LogWarningFormat("Can't generate file by path: {0}", pathOfAsset);
+                    return;
+                }
 
+                var simplePath = pathOfAsset.Replace($"{type.Name}.cs",  $"_{type.Name}.cs");
+                
                 if (!force)
                 {
-                    if (File.Exists(path))
+                    if (File.Exists(simplePath))
                     {
                         continue;
                     }
                 }
-
-
+                
                 var fileContent = providerFileTemplate
-                    .Replace("@@COMPONENTNAMESPACE@@", type.Namespace)
-                    .Replace("@@NAMESPACE@@", "SFramework.Generated")
+                    .Replace("@@NAMESPACE@@", type.Namespace)
                     .Replace("@@COMPONENTNAME@@", type.Name)
                     .Replace("@@NAME@@", AddSpacesToSentence(type.Name).Replace("Ref", "Reference"));
 
-
-                File.WriteAllText(path, fileContent, Encoding.UTF8);
+                File.WriteAllText(simplePath, fileContent, Encoding.UTF8);
             }
 
             AssetDatabase.Refresh();

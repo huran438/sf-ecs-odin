@@ -5,7 +5,7 @@ using UnityEditor;
 namespace SFramework.ECS.Editor
 {
     [Serializable]
-    public sealed class SFLeoEcsTool : ISFEditorTool
+    public sealed class SFECSTool : ISFEditorTool
     {
         [MenuItem("Edit/SFramework/Force Regenerate ECS Scripts")]
         private static void GenerateAuthorings()
@@ -13,6 +13,6 @@ namespace SFramework.ECS.Editor
           SFComponentsGenerator.Generate(true);
         }
 
-        public string Title => "Leo Ecs";
+        public string Title => "SF ECS";
     }
 }
