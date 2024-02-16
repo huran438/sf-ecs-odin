@@ -14,7 +14,7 @@ namespace SFramework.ECS.Editor
     [InitializeOnLoad]
     public static class SFComponentsGenerator
     {
-        private static string providerFileTemplate =
+        private const string providerFileTemplate =
             @"using SFramework.ECS.Runtime;
 using UnityEngine;
 using Sirenix.OdinInspector;
@@ -42,7 +42,7 @@ namespace @@NAMESPACE@@
                 .SelectMany(a => a.GetTypes())
                 .Where(t => t.IsValueType && t.GetCustomAttribute<SFGenerateComponentAttribute>() != null)
                 .ToList();
-
+            
             foreach (var type in authoringsToGenerate)
             {
                 var filter = $"t:Script {type.Name}";
@@ -54,9 +54,25 @@ namespace @@NAMESPACE@@
                     Debug.LogWarningFormat("Can't generate file by path: {0}", pathOfAsset);
                     return;
                 }
-
-                var simplePath = pathOfAsset.Replace($"{type.Name}.cs",  $"_{type.Name}.cs");
                 
+                
+                var template = providerFileTemplate;
+
+               
+                var attribute = type.GetCustomAttribute(typeof(SFGenerateComponentAttribute)) as SFGenerateComponentAttribute;
+
+                if (attribute != null)
+                {
+                    if (attribute.CustomBaseType != null)
+                    {
+                       template = template.Replace("SFComponent<@@COMPONENTNAME@@>", attribute.CustomBaseType.FullName.Replace("`1", "<@@COMPONENTNAME@@>"));
+                    }
+                }
+
+            
+
+                var simplePath = pathOfAsset.Replace($"{type.Name}.cs", $"_{type.Name}.cs");
+
                 if (!force)
                 {
                     if (File.Exists(simplePath))
@@ -64,8 +80,8 @@ namespace @@NAMESPACE@@
                         continue;
                     }
                 }
-                
-                var fileContent = providerFileTemplate
+
+                var fileContent = template
                     .Replace("@@NAMESPACE@@", type.Namespace)
                     .Replace("@@COMPONENTNAME@@", type.Name)
                     .Replace("@@NAME@@", AddSpacesToSentence(type.Name).Replace("Ref", "Reference"));

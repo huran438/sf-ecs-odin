@@ -13,5 +13,15 @@ namespace SFramework.ECS.Runtime
 
             return ref pool.Add(entity);
         }
+        
+        public static IEcsSystems Add(this IEcsSystems ecsSystems, params IEcsSystem[] systems)
+        {
+            foreach (var ecsSystem in systems)
+            {
+                ecsSystems.Add(ecsSystem);
+            }
+
+            return ecsSystems;
+        }
     }
 }

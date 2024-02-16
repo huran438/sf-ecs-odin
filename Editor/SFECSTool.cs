@@ -7,7 +7,7 @@ namespace SFramework.ECS.Editor
     [Serializable]
     public sealed class SFECSTool : ISFEditorTool
     {
-        [MenuItem("Edit/SFramework/Force Regenerate ECS Scripts")]
+        [MenuItem("Edit/SFramework/Regenerate ECS Components")]
         private static void GenerateAuthorings()
         {
           SFComponentsGenerator.Generate(true);
