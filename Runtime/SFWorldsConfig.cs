@@ -6,7 +6,7 @@ namespace SFramework.ECS.Runtime
 {
     public class SFWorldsConfig : SFConfig, ISFConfigsGenerator
     {
-        public override ISFConfigNode[] Nodes => Worlds;
+        public override ISFConfigNode[] Children => Worlds;
 
         public SFWorldNode[] Worlds;
 
@@ -17,7 +17,7 @@ namespace SFramework.ECS.Runtime
                 new SFGenerationData
                 {
                     FileName = "SFWorlds",
-                    Properties = Worlds.Select(o => $"{Name}/{o.Name}").ToHashSet()
+                    Properties = Worlds.Select(o => $"{Id}/{o.Id}").ToHashSet()
                 }
             };
         }

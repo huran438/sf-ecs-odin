@@ -33,7 +33,7 @@ namespace SFramework.ECS.Runtime
             _callbacks.OnLateUpdate += LateUpdate;
             var _repository = provider.GetRepositories<SFWorldsConfig>().FirstOrDefault();
             if (_repository == null) return;
-            foreach (SFWorldNode worldContainer in _repository.Nodes)
+            foreach (SFWorldNode worldContainer in _repository.Children)
             {
                 AddWorldContainer(worldContainer);
             }
@@ -41,7 +41,7 @@ namespace SFramework.ECS.Runtime
 
         private EcsWorld AddWorldContainer(SFWorldNode worldNode)
         {
-            if (_ecsWorlds.ContainsKey(worldNode.Name)) return null;
+            if (_ecsWorlds.ContainsKey(worldNode.Id)) return null;
 
             var world = new EcsWorld(new EcsWorld.Config
             {
@@ -96,7 +96,7 @@ namespace SFramework.ECS.Runtime
             _fixedUpdateSystems.Add(fixedUpdateSystems);
             _updateSystems.Add(updateSystems);
             _lateUpdateSystems.Add(lateUpdateSystems);
-            _ecsWorlds[worldNode.Name] = world;
+            _ecsWorlds[worldNode.Id] = world;
             return world;
         }
 

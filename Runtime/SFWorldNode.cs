@@ -10,6 +10,6 @@ namespace SFramework.ECS.Runtime
         public SFSystemContainer[] FixedUpdateSystems;
         public SFSystemContainer[] UpdateSystems;
         public SFSystemContainer[] LateUpdateSystems;
-        public override ISFConfigNode[] Nodes => null;
+        public override ISFConfigNode[] Children => null;
     }
 }
