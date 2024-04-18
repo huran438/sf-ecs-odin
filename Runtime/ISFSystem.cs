@@ -1,6 +1,6 @@
 ﻿namespace SFramework.ECS.Runtime
 {
-    public interface ISystem
+    public interface ISFSystem
     {
         
     }

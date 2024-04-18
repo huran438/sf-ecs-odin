@@ -4,6 +4,6 @@ namespace SFramework.ECS.Runtime
 {
     public interface ISFSystemsGroup
     {
-        ISystem[] Systems { get; }
+        ISFSystem[] Systems { get; }
     }
 }

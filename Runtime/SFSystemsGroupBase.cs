@@ -4,11 +4,11 @@ using UnityEngine;
 
 namespace SFramework.ECS.Runtime
 {
-    public abstract class SFSystemsGroupBase : ISFSystemsGroup, ISystem
+    public abstract class SFSystemsGroupBase : ISFSystemsGroup, ISFSystem
     {
-        public abstract ISystem[] Systems { get; }
+        public abstract ISFSystem[] Systems { get; }
 
-        public static implicit operator ISystem[](SFSystemsGroupBase group)
+        public static implicit operator ISFSystem[](SFSystemsGroupBase group)
         {
             return group.Systems;
         }
