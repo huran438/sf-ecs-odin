@@ -45,6 +45,14 @@ namespace SFramework.ECS.Runtime
                 (_value as ISFDrawGizmosSelected).DrawGizmosSelected(transform);
             }
         }
+        
+        protected virtual void OnValidate()
+        {
+            if (typeof(ISFOnValidate).IsAssignableFrom(typeof(T)))
+            {
+                (_value as ISFOnValidate).OnValidate();
+            }
+        }
 
 #endif
     }
