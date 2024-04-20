@@ -1,4 +1,5 @@
 ﻿using Leopotam.EcsLite;
+using UnityEngine;
 
 namespace SFramework.ECS.Runtime
 {
@@ -14,11 +15,21 @@ namespace SFramework.ECS.Runtime
             return ref pool.Add(entity);
         }
         
-        public static IEcsSystems Add(this IEcsSystems ecsSystems, params IEcsSystem[] systems)
+        public static IEcsSystems Add(this IEcsSystems ecsSystems, params ISFSystem[] systems)
         {
-            foreach (var ecsSystem in systems)
+            foreach (var system in systems)
             {
-                ecsSystems.Add(ecsSystem);
+                if (system is IEcsSystem ecsSystem)
+                {
+                    ecsSystems.Add(ecsSystem);
+                }
+                else if (system is ISFSystemsGroup systemsGroup)
+                {
+                    foreach (var systemG in systemsGroup.Systems)
+                    {
+                        ecsSystems.Add(systemG);
+                    }
+                }
             }
 
             return ecsSystems;

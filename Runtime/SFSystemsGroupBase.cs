@@ -1,12 +1,14 @@
-﻿using Leopotam.EcsLite;
+﻿using System;
+using Leopotam.EcsLite;
+using UnityEngine;
 
 namespace SFramework.ECS.Runtime
 {
-    public abstract class SFSystemsGroupBase : ISFSystemsGroup
+    public abstract class SFSystemsGroupBase : ISFSystemsGroup, ISFSystem
     {
-        public abstract IEcsSystem[] Systems { get; }
+        public abstract ISFSystem[] Systems { get; }
 
-        public static implicit operator IEcsSystem[](SFSystemsGroupBase group)
+        public static implicit operator ISFSystem[](SFSystemsGroupBase group)
         {
             return group.Systems;
         }
