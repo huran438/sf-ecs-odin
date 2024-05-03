@@ -21,6 +21,8 @@ namespace SFramework.ECS.Runtime
 
         public EcsWorld GetWorld(string name = "")
         {
+            if (name == null) return _defaultWorld;
+            
             return _ecsWorlds.TryGetValue(name, out var world) ? world : _defaultWorld;
         }
 
