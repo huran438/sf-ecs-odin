@@ -34,5 +34,15 @@ namespace SFramework.ECS.Runtime
 
             return ecsSystems;
         }
+        
+        public static bool TryGetEntity(this GameObject gameObject, out int entity)
+        {
+            return SFEntityMapping.GetEntity(gameObject, out entity);
+        }
+        
+        public static bool TryGetEntityPacked(this GameObject gameObject, out EcsPackedEntityWithWorld packedEntity)
+        {
+            return SFEntityMapping.GetEntityPacked(gameObject, out packedEntity);
+        }
     }
 }

@@ -22,10 +22,13 @@ namespace SFramework.ECS.Runtime
         private bool _injected;
         private ISFEntitySetup[] _components;
 
+        private bool isRootEntity;
+
         protected override void Init()
         {
             if (_injected) return;
             _components = GetComponents<ISFEntitySetup>();
+            isRootEntity = transform.parent == null || transform.parent.GetComponentInParent<SFEntity>(true) == null;
             _injected = true;
         }
 
@@ -43,6 +46,11 @@ namespace SFramework.ECS.Runtime
             };
 
             var _transform = transform;
+
+            if (isRootEntity)
+            {
+                world.GetPool<RootEntity>().Add(entity) = new RootEntity();
+            }
 
             world.GetPool<TransformRef>().Add(entity) = new TransformRef
             {

@@ -13,17 +13,17 @@ namespace SFramework.ECS.Runtime
             _packedEntities = new Dictionary<int, EcsPackedEntityWithWorld>();
         }
 
-        internal static void AddMapping(GameObject gameObject, ref EcsWorld world, ref int entity)
+        static internal void AddMapping(GameObject gameObject, ref EcsWorld world, ref int entity)
         {
             _packedEntities[gameObject.GetInstanceID()] = world.PackEntityWithWorld(entity);
         }
 
-        internal static void AddMapping(GameObject gameObject, ref EcsPackedEntityWithWorld entity)
+        static internal void AddMapping(GameObject gameObject, ref EcsPackedEntityWithWorld entity)
         {
             _packedEntities[gameObject.GetInstanceID()] = entity;
         }
 
-        internal static void RemoveMapping(GameObject gameObject)
+        static internal void RemoveMapping(GameObject gameObject)
         {
             var instanceId = gameObject.GetInstanceID();
             
