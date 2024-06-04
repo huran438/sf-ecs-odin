@@ -15,6 +15,11 @@ namespace SFramework.ECS.Runtime
 
         public ref T Value => ref _value;
 
+#if UNITY_EDITOR
+        private EcsPackedEntityWithWorld _packedEntity;
+        public ref EcsPackedEntityWithWorld PackedEntity => ref _packedEntity;
+#endif
+
         public void Setup(ref EcsPackedEntityWithWorld packedEntity)
         {
             if (_value is IEcsAutoInit<T> value)
@@ -26,6 +31,10 @@ namespace SFramework.ECS.Runtime
             {
                 world.GetPool<T>().Add(entity) = _value;
             }
+
+#if UNITY_EDITOR
+            _packedEntity = packedEntity;
+#endif
         }
 
 #if UNITY_EDITOR
@@ -48,12 +57,34 @@ namespace SFramework.ECS.Runtime
         
         protected virtual void OnValidate()
         {
+            if (Application.isPlaying)
+            {
+                if (PackedEntity.Unpack(out var world, out var entity))
+                { 
+                    var pool = world.GetPool<T>();
+                    
+                    if (pool.Has(entity))
+                    {
+                        pool.Del(entity);
+                        pool.Add(entity) = Value;
+                    }
+                    else
+                    {
+                        pool.Add(entity) = Value;
+                    }
+                    
+                    if (_value is IEcsAutoInit<T> value)
+                    {
+                        value.AutoInit(ref _value);
+                    }
+                }
+            }
+            
             if (typeof(ISFOnValidate).IsAssignableFrom(typeof(T)))
             {
                 (_value as ISFOnValidate).OnValidate();
             }
         }
-
 #endif
     }
 }
