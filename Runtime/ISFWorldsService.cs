@@ -1,5 +1,8 @@
 using Leopotam.EcsLite;
 using SFramework.Core.Runtime;
+using UnityEngine.Scripting;
+
+
 
 namespace SFramework.ECS.Runtime
 {

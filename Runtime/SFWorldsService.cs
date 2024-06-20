@@ -1,9 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using Leopotam.EcsLite;
 using Leopotam.EcsLite.Di;
 using SFramework.Configs.Runtime;
+using SFramework.Core.Runtime;
 using UnityEngine;
 
 namespace SFramework.ECS.Runtime
@@ -15,6 +18,7 @@ namespace SFramework.ECS.Runtime
         private readonly List<EcsSystems> _updateSystems = new();
         private readonly List<EcsSystems> _fixedUpdateSystems = new();
         private readonly SFECSCallbacks _callbacks;
+        private readonly ISFConfigsService _configsService;
 
         private EcsWorld _defaultWorld;
         public EcsWorld[] Worlds => _ecsWorlds.Values.ToArray();
@@ -23,22 +27,31 @@ namespace SFramework.ECS.Runtime
         {
             if (string.IsNullOrEmpty(name)) return _defaultWorld;
             
-            return _ecsWorlds.TryGetValue(name, out var world) ? world : _defaultWorld;
+            return _ecsWorlds.GetValueOrDefault(name, _defaultWorld);
         }
 
         SFWorldsService(ISFConfigsService provider)
         {
-            _defaultWorld = new EcsWorld();
+            _configsService = provider;
             _callbacks = new GameObject("SF_ECS_CALLBACKS").AddComponent<SFECSCallbacks>();
+            _defaultWorld = new EcsWorld();
+        }
+        
+        public UniTask Init(CancellationToken cancellationToken)
+        {
+            
+          
             _callbacks.OnFixedUpdate += FixedUpdate;
             _callbacks.OnUpdate += Update;
             _callbacks.OnLateUpdate += LateUpdate;
-            var _repository = provider.GetRepositories<SFWorldsConfig>().FirstOrDefault();
-            if (_repository == null) return;
+            var _repository = _configsService.GetConfigs<SFWorldsConfig>().FirstOrDefault();
+            if (_repository == null) return UniTask.CompletedTask;
             foreach (SFWorldNode worldContainer in _repository.Children)
             {
                 AddWorldContainer(worldContainer);
             }
+            
+            return UniTask.CompletedTask;
         }
 
         private EcsWorld AddWorldContainer(SFWorldNode worldNode)
@@ -137,5 +150,6 @@ namespace SFramework.ECS.Runtime
             _callbacks.OnUpdate -= Update;
             _callbacks.OnLateUpdate -= LateUpdate;
         }
+ 
     }
 }
