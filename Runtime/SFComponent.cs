@@ -18,13 +18,18 @@ namespace SFramework.ECS.Runtime
 #if UNITY_EDITOR
         private EcsPackedEntityWithWorld _packedEntity;
         public ref EcsPackedEntityWithWorld PackedEntity => ref _packedEntity;
+        private EcsPool<T> _pool;
 #endif
 
         public void Setup(ref EcsPackedEntityWithWorld packedEntity)
         {
-            if (_value is IEcsAutoInit<T> value)
+            if (_value is IEcsAutoInit<T> autoInit)
             {
-                value.AutoInit(ref _value);
+                autoInit.AutoInit(ref _value);
+            }
+            else if (_value is IEcsAutoReset<T> autoReset)
+            {
+                autoReset.AutoReset(ref _value);
             }
 
             if (packedEntity.Unpack(out var world, out var entity))
@@ -34,55 +39,56 @@ namespace SFramework.ECS.Runtime
 
 #if UNITY_EDITOR
             _packedEntity = packedEntity;
+            _pool = world.GetPool<T>();
 #endif
         }
 
+        
 #if UNITY_EDITOR
-
         protected virtual void OnDrawGizmos()
         {
-            if (typeof(ISFDrawGizmos).IsAssignableFrom(typeof(T)))
+            if (_value is ISFDrawGizmos drawGizmos)
             {
-                (_value as ISFDrawGizmos).DrawGizmos(transform);
+                drawGizmos.DrawGizmos(transform);
             }
         }
 
         protected virtual void OnDrawGizmosSelected()
         {
-            if (typeof(ISFDrawGizmosSelected).IsAssignableFrom(typeof(T)))
+            if (_value is ISFDrawGizmosSelected drawGizmosSelected)
             {
-                (_value as ISFDrawGizmosSelected).DrawGizmosSelected(transform);
+                drawGizmosSelected.DrawGizmosSelected(transform);
             }
         }
         
         protected virtual void OnValidate()
         {
-            if (Application.isPlaying)
+            // Update component in ECS
+            if (PackedEntity.Unpack(out var world, out var entity))
             {
-                if (PackedEntity.Unpack(out var world, out var entity))
-                { 
-                    var pool = world.GetPool<T>();
-                    
-                    if (pool.Has(entity))
-                    {
-                        pool.Del(entity);
-                        pool.Add(entity) = Value;
-                    }
-                    else
-                    {
-                        pool.Add(entity) = Value;
-                    }
-                    
-                    if (_value is IEcsAutoInit<T> value)
-                    {
-                        value.AutoInit(ref _value);
-                    }
+                if (_pool.Has(entity))
+                {
+                    _pool.Del(entity);
+                    _pool.Add(entity) = Value;
+                }
+                else
+                {
+                    _pool.Add(entity) = Value;
+                }
+
+                if (_value is IEcsAutoInit<T> autoInit)
+                {
+                    autoInit.AutoInit(ref _value);
+                }
+                else if (_value is IEcsAutoReset<T> autoReset)
+                {
+                    autoReset.AutoReset(ref _value);
                 }
             }
-            
-            if (typeof(ISFOnValidate).IsAssignableFrom(typeof(T)))
+
+            if (_value is ISFOnValidate onValidate)
             {
-                (_value as ISFOnValidate).OnValidate();
+                onValidate.OnValidate();
             }
         }
 #endif
