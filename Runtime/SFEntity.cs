@@ -32,6 +32,15 @@ namespace SFramework.ECS.Runtime
             _injected = true;
         }
 
+#if UNITY_EDITOR
+        [Button(ButtonSizes.Small, Name = "ReInit")]
+        private void ReInit()
+        {
+            _components = GetComponents<ISFEntitySetup>();
+            isRootEntity = transform.parent == null || transform.parent.GetComponentInParent<SFEntity>(true) == null;
+        }
+#endif
+
         public void OnEnable()
         {
             var world = _worldsService.GetWorld(_world);
