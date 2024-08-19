@@ -9,7 +9,7 @@ namespace SFramework.ECS.Runtime
     [DisallowMultipleComponent]
     public sealed class SFEntity : SFView, ISFEntity
     {
-        public EcsPackedEntityWithWorld EcsPackedEntity => _ecsPackedEntity;
+        public ref EcsPackedEntityWithWorld EcsPackedEntity => ref _ecsPackedEntity;
 
         [SFInject]
         private ISFWorldsService _worldsService;
@@ -36,8 +36,12 @@ namespace SFramework.ECS.Runtime
         [Button(ButtonSizes.Small, Name = "ReInit")]
         private void ReInit()
         {
+            OnDisable();
+            
             _components = GetComponents<ISFEntitySetup>();
             isRootEntity = transform.parent == null || transform.parent.GetComponentInParent<SFEntity>(true) == null;
+            
+            OnEnable();
         }
 #endif
 
@@ -78,7 +82,9 @@ namespace SFramework.ECS.Runtime
             SFEntityMapping.RemoveMapping(gameObject);
 
             if (_ecsPackedEntity.Unpack(out var world, out var entity))
+            {
                 world.DelEntity(entity);
+            }
         }
     }
 }

@@ -1,6 +1,4 @@
-﻿using System;
-using Leopotam.EcsLite;
-using UnityEngine;
+﻿
 
 namespace SFramework.ECS.Runtime
 {
