@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Leopotam.EcsLite;
+using SFramework.Core.Runtime;
 using UnityEngine;
 
 namespace SFramework.ECS.Runtime
@@ -35,6 +36,14 @@ namespace SFramework.ECS.Runtime
 
         public static bool GetEntity(GameObject gameObject, out EcsWorld world, out int entity)
         {
+            if (gameObject == null)
+            {
+                SFDebug.Log(LogType.Warning, "GameObject is null");
+                entity = default;
+                world = default;
+                return false;
+            }
+            
             var instanceId = gameObject.GetInstanceID();
             
             if (_packedEntities.TryGetValue(instanceId, out var packedEntityWithWorld))
@@ -49,6 +58,13 @@ namespace SFramework.ECS.Runtime
         
         public static bool GetEntity(GameObject gameObject, out int entity)
         {
+            if (gameObject == null)
+            {
+                SFDebug.Log(LogType.Warning, "GameObject is null");
+                entity = default;
+                return false;
+            }
+            
             var instanceId = gameObject.GetInstanceID();
             
             if (_packedEntities.TryGetValue(instanceId, out var packedEntityWithWorld))
@@ -62,6 +78,13 @@ namespace SFramework.ECS.Runtime
 
         public static bool GetEntityPacked(GameObject gameObject, out EcsPackedEntityWithWorld packedEntity)
         {
+            if (gameObject == null)
+            {
+                SFDebug.Log(LogType.Warning, "GameObject is null");
+                packedEntity = default;
+                return false;
+            }
+            
             var instanceId = gameObject.GetInstanceID();
             
             if (_packedEntities.TryGetValue(instanceId, out var packedEntityWithWorld))
