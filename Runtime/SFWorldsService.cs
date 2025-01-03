@@ -6,7 +6,6 @@ using Cysharp.Threading.Tasks;
 using Leopotam.EcsLite;
 using Leopotam.EcsLite.Di;
 using SFramework.Configs.Runtime;
-using SFramework.Core.Runtime;
 using UnityEngine;
 
 namespace SFramework.ECS.Runtime
@@ -20,14 +19,12 @@ namespace SFramework.ECS.Runtime
         private readonly SFECSCallbacks _callbacks;
         private readonly ISFConfigsService _configsService;
 
-        private EcsWorld _defaultWorld;
+        private readonly EcsWorld _defaultWorld;
         public EcsWorld[] Worlds => _ecsWorlds.Values.ToArray();
 
         public EcsWorld GetWorld(string name = "")
         {
-            if (string.IsNullOrEmpty(name)) return _defaultWorld;
-            
-            return _ecsWorlds.GetValueOrDefault(name, _defaultWorld);
+            return string.IsNullOrEmpty(name) ? _defaultWorld : _ecsWorlds.GetValueOrDefault(name, _defaultWorld);
         }
 
         SFWorldsService(ISFConfigsService provider)
@@ -36,19 +33,22 @@ namespace SFramework.ECS.Runtime
             _callbacks = new GameObject("SF_ECS_CALLBACKS").AddComponent<SFECSCallbacks>();
             _defaultWorld = new EcsWorld();
         }
-        
+
         public UniTask Init(CancellationToken cancellationToken)
         {
-            
-          
             _callbacks.OnFixedUpdate += FixedUpdate;
             _callbacks.OnUpdate += Update;
             _callbacks.OnLateUpdate += LateUpdate;
-            var _repository = _configsService.GetConfigs<SFWorldsConfig>().FirstOrDefault();
-            if (_repository == null) return UniTask.CompletedTask;
-            foreach (SFWorldNode worldContainer in _repository.Children)
+
+            if (_configsService.TryGetConfigs(out SFWorldsConfig[] worldConfigs))
             {
-                AddWorldContainer(worldContainer);
+                foreach (var worldsConfig in worldConfigs)
+                {
+                    foreach (var worldContainer in worldsConfig.Worlds)
+                    {
+                        AddWorldContainer(worldContainer);
+                    }
+                }
             }
             
             return UniTask.CompletedTask;
@@ -150,6 +150,5 @@ namespace SFramework.ECS.Runtime
             _callbacks.OnUpdate -= Update;
             _callbacks.OnLateUpdate -= LateUpdate;
         }
- 
     }
 }

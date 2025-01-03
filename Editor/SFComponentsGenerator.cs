@@ -42,7 +42,7 @@ namespace @@NAMESPACE@@
                 .SelectMany(a => a.GetTypes())
                 .Where(t => t.IsValueType && t.GetCustomAttribute<SFGenerateComponentAttribute>() != null)
                 .ToList();
-            
+
             foreach (var type in authoringsToGenerate)
             {
                 var filter = $"t:Script {type.Name}";
@@ -51,25 +51,24 @@ namespace @@NAMESPACE@@
 
                 if (string.IsNullOrEmpty(pathOfAsset))
                 {
-                    Debug.LogWarningFormat("Can't generate file by path: {0}", pathOfAsset);
-                    return;
+                    SFDebug.Log(LogType.Warning, "Can't generate file by path: {0}, Type: {1}", pathOfAsset, type.FullName);
+                    continue;
                 }
-                
-                
+
+
                 var template = providerFileTemplate;
 
-               
+
                 var attribute = type.GetCustomAttribute(typeof(SFGenerateComponentAttribute)) as SFGenerateComponentAttribute;
 
                 if (attribute != null)
                 {
                     if (attribute.CustomBaseType != null)
                     {
-                       template = template.Replace("SFComponent<@@COMPONENTNAME@@>", attribute.CustomBaseType.FullName.Replace("`1", "<@@COMPONENTNAME@@>"));
+                        template = template.Replace("SFComponent<@@COMPONENTNAME@@>", attribute.CustomBaseType.FullName.Replace("`1", "<@@COMPONENTNAME@@>"));
                     }
                 }
 
-            
 
                 var simplePath = pathOfAsset.Replace($"{type.Name}.cs", $"_{type.Name}.cs");
 
@@ -87,9 +86,9 @@ namespace @@NAMESPACE@@
                     .Replace("@@NAME@@", AddSpacesToSentence(type.Name).Replace("Ref", "Reference"));
 
                 File.WriteAllText(simplePath, fileContent, Encoding.UTF8);
+                AssetDatabase.Refresh(ImportAssetOptions.Default);
+                AssetDatabase.SaveAssets();
             }
-
-            AssetDatabase.Refresh();
         }
 
         static string AddSpacesToSentence(string text, bool preserveAcronyms = true)

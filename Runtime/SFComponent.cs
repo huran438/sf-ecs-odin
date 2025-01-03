@@ -11,43 +11,33 @@ namespace SFramework.ECS.Runtime
         [HideLabel]
         [InlineProperty]
         [SerializeField]
-        private T _value;
+        protected T _value;
 
-        public ref T Value => ref _value;
-
-#if UNITY_EDITOR
-        private EcsPackedEntityWithWorld _packedEntity;
-        public ref EcsPackedEntityWithWorld PackedEntity => ref _packedEntity;
+        private EcsPackedEntityWithWorld _packedEntityWithWorld;
         private EcsPool<T> _pool;
-#endif
 
         public void Setup(ref EcsPackedEntityWithWorld packedEntity)
         {
+            if (!packedEntity.Unpack(out var world, out var entity)) return;
+
+            _pool = world.GetPool<T>();
+            _packedEntityWithWorld = packedEntity;
+
             if (_value is IEcsAutoInit<T> autoInit)
             {
                 autoInit.AutoInit(ref _value);
             }
-            else if (_value is IEcsAutoReset<T> autoReset)
-            {
-                autoReset.AutoReset(ref _value);
-            }
 
-            if (packedEntity.Unpack(out var world, out var entity))
-            {
-                world.GetPool<T>().Add(entity) = _value;
-            }
-
-#if UNITY_EDITOR
-            _packedEntity = packedEntity;
-            _pool = world.GetPool<T>();
-#endif
+            _pool.Add(entity) = _value;
         }
 
-        
-#if UNITY_EDITOR
+
         protected virtual void OnDrawGizmos()
         {
-            if (_value is ISFDrawGizmos drawGizmos)
+            if (!_packedEntityWithWorld.Unpack(out _, out var entity) || !_pool.Has(entity)) return;
+            ref var value = ref _pool.Get(entity);
+
+            if (value is ISFDrawGizmos<T> drawGizmos)
             {
                 drawGizmos.DrawGizmos(transform);
             }
@@ -55,42 +45,13 @@ namespace SFramework.ECS.Runtime
 
         protected virtual void OnDrawGizmosSelected()
         {
-            if (_value is ISFDrawGizmosSelected drawGizmosSelected)
+            if (!_packedEntityWithWorld.Unpack(out _, out var entity) || !_pool.Has(entity)) return;
+            ref var value = ref _pool.Get(entity);
+
+            if (value is ISFDrawGizmosSelected<T> drawGizmosSelected)
             {
                 drawGizmosSelected.DrawGizmosSelected(transform);
             }
         }
-        
-        protected virtual void OnValidate()
-        {
-            // Update component in ECS
-            if (PackedEntity.Unpack(out var world, out var entity))
-            {
-                if (_pool.Has(entity))
-                {
-                    _pool.Del(entity);
-                    _pool.Add(entity) = Value;
-                }
-                else
-                {
-                    _pool.Add(entity) = Value;
-                }
-
-                if (_value is IEcsAutoInit<T> autoInit)
-                {
-                    autoInit.AutoInit(ref _value);
-                }
-                else if (_value is IEcsAutoReset<T> autoReset)
-                {
-                    autoReset.AutoReset(ref _value);
-                }
-            }
-
-            if (_value is ISFOnValidate onValidate)
-            {
-                onValidate.OnValidate();
-            }
-        }
-#endif
     }
 }

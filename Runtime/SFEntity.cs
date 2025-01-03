@@ -12,69 +12,60 @@ namespace SFramework.ECS.Runtime
         public ref EcsPackedEntityWithWorld EcsPackedEntity => ref _ecsPackedEntity;
 
         [SFInject]
-        private ISFWorldsService _worldsService;
+        private readonly ISFWorldsService _worldsService;
 
         [SFWorld]
         [SerializeField]
         private string _world;
-        
+
         private EcsPackedEntityWithWorld _ecsPackedEntity;
         private bool _injected;
         private ISFEntitySetup[] _components;
+        private EcsPool<GameObjectRef> _gameObjectRefPool;
+        private EcsPool<TransformRef> _transformRefPool;
+        private EcsPool<RootEntity> _rootEntityPool;
+        private EcsWorld _ecsWorld;
 
-        private bool isRootEntity;
+        private bool _isRootEntity;
 
         protected override void Init()
         {
             if (_injected) return;
             _components = GetComponents<ISFEntitySetup>();
-            isRootEntity = transform.parent == null || transform.parent.GetComponentInParent<SFEntity>(true) == null;
+            _isRootEntity = transform.parent == null || transform.parent.GetComponentInParent<SFEntity>(true) == null;
             _injected = true;
+            _ecsWorld = _worldsService.GetWorld(_world);
+            _gameObjectRefPool = _ecsWorld.GetPool<GameObjectRef>();
+            _transformRefPool = _ecsWorld.GetPool<TransformRef>();
+            _rootEntityPool = _ecsWorld.GetPool<RootEntity>();
         }
-
-#if UNITY_EDITOR
-        [Button(ButtonSizes.Small, Name = "ReInit")]
-        private void ReInit()
-        {
-            OnDisable();
-            
-            _components = GetComponents<ISFEntitySetup>();
-            isRootEntity = transform.parent == null || transform.parent.GetComponentInParent<SFEntity>(true) == null;
-            
-            OnEnable();
-        }
-#endif
 
         public void OnEnable()
         {
-            var world = _worldsService.GetWorld(_world);
-            var entity = world.NewEntity();
-            _ecsPackedEntity = world.PackEntityWithWorld(entity);
+            var entity = _ecsWorld.NewEntity();
+            _ecsPackedEntity = _ecsWorld.PackEntityWithWorld(entity);
 
             SFEntityMapping.AddMapping(gameObject, ref _ecsPackedEntity);
 
-            world.GetPool<GameObjectRef>().Add(entity) = new GameObjectRef
+            _gameObjectRefPool.Add(entity) = new GameObjectRef
             {
                 value = gameObject
             };
-
-            var _transform = transform;
-
-            if (isRootEntity)
+            
+            if (_isRootEntity)
             {
-                world.GetPool<RootEntity>().Add(entity) = new RootEntity();
+                _rootEntityPool.Add(entity) = new RootEntity();
             }
 
-            world.GetPool<TransformRef>().Add(entity) = new TransformRef
+            _transformRefPool.Add(entity) = new TransformRef
             {
-                value = _transform
+                value = transform
             };
-            
+
             foreach (var entitySetup in _components)
             {
                 entitySetup.Setup(ref _ecsPackedEntity);
             }
-
         }
 
         public void OnDisable()
