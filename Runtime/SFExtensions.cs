@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace SFramework.ECS.Runtime
 {
-    public static partial class SFExtensions
+    public static class SFExtensions
     {
         public static ref T Replace<T>(this EcsPool<T> pool, int entity) where T : struct
         {
@@ -14,8 +14,8 @@ namespace SFramework.ECS.Runtime
 
             return ref pool.Add(entity);
         }
-        
-        public static IEcsSystems Add(this IEcsSystems ecsSystems, params ISFSystem[] systems)
+
+        public static IEcsSystems Add(this IEcsSystems ecsSystems, ISFSystem[] systems)
         {
             foreach (var system in systems)
             {
@@ -27,19 +27,20 @@ namespace SFramework.ECS.Runtime
                 {
                     foreach (var systemG in systemsGroup.Systems)
                     {
-                        ecsSystems.Add(systemG);
+                        if (systemG is not IEcsSystem ecsSystemG) continue;
+                        ecsSystems.Add(ecsSystemG);
                     }
                 }
             }
 
             return ecsSystems;
         }
-        
+
         public static bool TryGetEntity(this GameObject gameObject, out int entity)
         {
             return SFEntityMapping.GetEntity(gameObject, out entity);
         }
-        
+
         public static bool TryGetEntityPacked(this GameObject gameObject, out EcsPackedEntityWithWorld packedEntity)
         {
             return SFEntityMapping.GetEntityPacked(gameObject, out packedEntity);
