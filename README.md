@@ -2,8 +2,6 @@
 
 # SF ECS Odin
 
-[Documentation website](https://docs.secretplace.studio/#sf-ecs-odin)
-
 Configured **LeoECS Lite** worlds, Unity entity authoring, and system lifecycle integration for SFramework, with Odin Inspector attributes.
 
 ![Package version](https://img.shields.io/badge/package-0.1.0-334155) ![License](https://img.shields.io/badge/license-MIT-334155)
