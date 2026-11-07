@@ -4,8 +4,6 @@
     "references": [
         "SFramework.Configs.Runtime",
         "SFramework.Core.Runtime",
-        "Leopotam.EcsLite",
-        "Leopotam.EcsLite.Di",
         "UniTask"
     ],
     "includePlatforms": [],

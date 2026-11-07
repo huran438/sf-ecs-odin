@@ -11,7 +11,7 @@ namespace SFramework.ECS.Runtime
 
         private void Awake()
         {
-            DontDestroyOnLoad(gameObject);
+            if (Application.isPlaying) DontDestroyOnLoad(gameObject);
         }
 
         private void FixedUpdate()

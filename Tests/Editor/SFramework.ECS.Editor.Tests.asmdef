@@ -1,0 +1,22 @@
+{
+    "name": "SFramework.ECS.Editor.Tests",
+    "rootNamespace": "SFramework.ECS.Tests",
+    "references": [
+        "SFramework.ECS.Editor",
+        "SFramework.ECS.Runtime",
+        "SFramework.ECS.Tests.Support",
+        "SFramework.Core.Runtime",
+        "SFramework.Configs.Runtime",
+        "UniTask"
+    ],
+    "includePlatforms": ["Editor"],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": ["UNITY_INCLUDE_TESTS"],
+    "versionDefines": [],
+    "noEngineReferences": false,
+    "optionalUnityReferences": ["TestAssemblies"]
+}

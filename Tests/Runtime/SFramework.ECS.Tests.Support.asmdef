@@ -1,0 +1,16 @@
+{
+    "name": "SFramework.ECS.Tests.Support",
+    "rootNamespace": "SFramework.ECS.Tests",
+    "references": [
+        "SFramework.ECS.Runtime"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": ["UNITY_INCLUDE_TESTS"],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -1,4 +1,3 @@
-﻿using Leopotam.EcsLite;
 
 namespace SFramework.ECS.Runtime
 {

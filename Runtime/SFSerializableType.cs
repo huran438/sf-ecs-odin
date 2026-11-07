@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Linq;
 using UnityEngine;
 
@@ -7,31 +8,47 @@ namespace SFramework.ECS.Runtime
     [Serializable]
     public class SFSerializableType : ISerializationCallbackReceiver {
         [SerializeField] string assemblyQualifiedName = string.Empty;
-        
-        public Type Type { get; private set; }
-        
-        void ISerializationCallbackReceiver.OnBeforeSerialize() {
-            assemblyQualifiedName = Type?.AssemblyQualifiedName ?? assemblyQualifiedName;
-        }
+        private string _resolvedName;
+        private Type _resolvedType;
 
-        void ISerializationCallbackReceiver.OnAfterDeserialize() {
-            if (!TryGetType(assemblyQualifiedName, out var type)) {
-                Debug.LogError($"Type {assemblyQualifiedName} not found");
-                return;
+        public Type Type
+        {
+            get
+            {
+                if (_resolvedName != assemblyQualifiedName) Resolve();
+                return _resolvedType;
             }
-            Type = type;
         }
 
-        static bool TryGetType(string typeString, out Type type) {
-            type = Type.GetType(typeString);
-            return type != null || !string.IsNullOrEmpty(typeString);
+        void ISerializationCallbackReceiver.OnBeforeSerialize() { }
+        void ISerializationCallbackReceiver.OnAfterDeserialize() => Resolve();
+
+        private void Resolve()
+        {
+            _resolvedName = assemblyQualifiedName;
+            _resolvedType = ResolveTypeName(_resolvedName);
+        }
+
+        internal static Type ResolveTypeName(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return null;
+            try { return System.Type.GetType(name); }
+            catch (Exception exception) when (exception is ArgumentException or TypeLoadException or FileNotFoundException
+                or FileLoadException or BadImageFormatException)
+            {
+                return null;
+            }
         }
         
         // Implicit conversion from SerializableType to Type
-        public static implicit operator Type(SFSerializableType sType) => sType.Type;
+        public static implicit operator Type(SFSerializableType sType) => sType?.Type;
 
         // Implicit conversion from Type to SerializableType
-        public static implicit operator SFSerializableType(Type type) => new() { Type = type };
+        public static implicit operator SFSerializableType(Type type)
+        {
+            var name = type?.AssemblyQualifiedName;
+            return new SFSerializableType { assemblyQualifiedName = name, _resolvedName = name, _resolvedType = type };
+        }
     }
 
     public class SFSerializableTypeFilterAttribute : PropertyAttribute {

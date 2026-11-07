@@ -2,11 +2,51 @@
 
 # SF ECS Odin
 
-Configured ECS worlds, Unity entity authoring, and system lifecycle integration for SFramework, with Odin Inspector attributes.
+![Package](https://img.shields.io/badge/UPM-sp.sframework.ecs.odin-5865f2) ![Version](https://img.shields.io/badge/version-0.1.0-5865f2)
 
-![Package version](https://img.shields.io/badge/package-0.1.0-334155) ![License](https://img.shields.io/badge/license-MIT-334155)
+## Overview
 
-[Install](#installation) · [Setup](#bootstrap-and-world-configuration) · [Authoring](#component-authoring) · [Systems](#systems-and-phase-order) · [API](#public-api) · [Limits](#known-limits)
+Self-contained ECS worlds, Unity entity authoring, and system lifecycle integration for SFramework, with Odin Inspector attributes. The ECS runtime is embedded in `SFramework.ECS.Runtime` and dependency injection uses SF Core.
+
+## Requirements
+
+The package ID is `sp.sframework.ecs.odin`, version `0.1.0`. [package.json](package.json) contains no dependency entries or minimum Unity version.
+
+| Required assembly / asset | Use |
+| --- | --- |
+| `SFramework.Core.Runtime`, `SFramework.Core.Editor` | [SF Core](https://github.com/huran438/sf-core); container, view injection, and editor tools. |
+| `SFramework.Configs.Runtime` | [SF Configs](https://github.com/huran438/sf-configs); world configuration and ID selection. |
+| `UniTask` | Service initialization. |
+| Odin Inspector / Serializer | A separately licensed installation supplying the referenced Sirenix DLLs. This package does not bundle Odin. |
+
+The [runtime asmdef](Runtime/SFramework.ECS.Runtime.asmdef) references Odin attributes, serialization, utilities, and serialization config DLLs. The [editor asmdef](Editor/SFramework.ECS.Editor.asmdef) also references Odin editor and utilities editor DLLs.
+
+Choose this package or [SF ECS](https://github.com/huran438/sf-ecs), since both declare `SFramework.ECS.Runtime` / `SFramework.ECS.Editor` and overlapping types. [SF ECS Proto](https://github.com/huran438/sf-ecs-proto) uses a different ECS backend.
+
+Install the transitive dependencies of SF Core and SF Configs too: SF Debug, UniTask, and Newtonsoft.Json. The required Sirenix DLLs must be present. Generated providers use ordinary Unity attributes. Regenerate older providers that still include the `IL2CPP_OPTIMIZATIONS` block before using that define in a player build.
+
+`SFEcsWorld`, `SFEcsPool<T>`, `SFEcsFilter`, packed entities, and system interfaces are included in `SFramework.ECS.Runtime`. The kernel supports IL2CPP and the `SFECS_FILTER_EVENTS`, `SFECS_WORLD_EVENTS`, and `SFECS_NO_SANITIZE_CHECKS` scripting defines.
+
+### Migrating existing systems
+
+Use `SFramework.ECS.Runtime` in consumers and remove obsolete external ECS assembly references and package dependencies when unused. ECS types use the `SFEcs` prefix. Migrate serialized type names to the SFramework assembly and namespace.
+
+The runtime sources live directly in `Runtime`, alongside the authoring integration:
+
+| Previous type | Current type |
+| --- | --- |
+| `EcsWorld` | `SFEcsWorld` |
+| `EcsPool<T>` | `SFEcsPool<T>` |
+| `EcsFilter` | `SFEcsFilter` |
+| `EcsSystems` / `IEcsSystems` | `SFEcsSystems` / `ISFEcsSystems` |
+| `EcsPackedEntity` / `EcsPackedEntityWithWorld` | `SFEcsPackedEntity` / `SFEcsPackedEntityWithWorld` |
+| `IEcsRunSystem`, `IEcsInitSystem`, other `IEcs*` contracts | `ISFEcsRunSystem`, `ISFEcsInitSystem`, other `ISFEcs*` contracts |
+
+The existing `ISFSystem` authoring marker and `SFEntity.EcsPackedEntity` property keep their names. `.editorconfig` defines the package's C# formatting conventions.
+
+Replace Lite DI service wrappers with automatic mutable service fields on a partial `ISFInjectable` system (or derive from `SFSystem`). Obtain ECS data from `systems.GetWorld()`, `world.GetPool<T>()` and `world.Filter<T>().End()` inside `Init(ISFEcsSystems)` or `Tick`. Named worlds and shared data remain available through `GetWorld(name)` and `GetShared<T>()`. The separate Lite DI wrappers such as `EcsPoolInject<T>` and `EcsFilterInject<T>` are not included.
+
+`SFEcsSystems.Init()` injects all `ISFInjectable` systems through `SFContainer` before any `PreInit` or `Init` callback, including manually built pipelines. Register services before calling `Init`; a separate `.Inject()` call is no longer needed. Each system receives injection once per pipeline initialization, and existing lifecycle callbacks keep their order. SFInject was removed; migrate properties/methods to fields and lifecycle hooks.
 
 ## Installation
 
@@ -16,27 +56,13 @@ Add this URL through Unity Package Manager's **Add package from git URL**:
 https://github.com/huran438/sf-ecs-odin.git#main
 ```
 
-The package ID is `sp.sframework.ecs.odin`, version `0.1.0`. [package.json](package.json) contains no dependency entries or minimum Unity version.
+## Quick start
 
-| Required assembly / asset | Use |
-| --- | --- |
-| `SFramework.Core.Runtime`, `SFramework.Core.Editor` | [SF Core](https://github.com/huran438/sf-core); container, view injection, and editor tools. |
-| `SFramework.Configs.Runtime` | [SF Configs](https://github.com/huran438/sf-configs); world configuration and ID selection. |
-| `Leopotam.EcsLite`, `Leopotam.EcsLite.Di` | External ECS runtime and its DI integration. |
-| `UniTask` | Service initialization. |
-| Odin Inspector / Serializer | A separately licensed installation supplying the referenced Sirenix DLLs. This package does not bundle Odin. |
-
-The [runtime asmdef](Runtime/SFramework.ECS.Runtime.asmdef) references Odin attributes, serialization, utilities, and serialization config DLLs. The [editor asmdef](Editor/SFramework.ECS.Editor.asmdef) also references Odin editor and utilities editor DLLs.
-
-Choose this package or [SF ECS](https://github.com/huran438/sf-ecs), since both declare `SFramework.ECS.Runtime` / `SFramework.ECS.Editor` and overlapping types. [SF ECS Proto](https://github.com/huran438/sf-ecs-proto) uses a different ECS backend.
-
-The checked Core and Configs branches expose the lifecycle APIs this variant calls. That is a source-level match, not a Unity compatibility test. Review the world-selector and entity-recreation limitations below before integration.
-
-## Bootstrap and world configuration
+### Bootstrap and world configuration
 
 Register Configs before Worlds: the worlds-service constructor requires `ISFConfigsService`. Core initializes registered services in order, so Configs must load before Worlds reads `SFWorldsConfig`.
 
-Keep the entity group inactive in the scene until service initialization completes. Otherwise an entity's `SFView.Awake` can cache the fallback world before the service creates the configured world.
+Named `SFEntity` views enabled before world initialization wait for their configured worlds. You can keep an entity group inactive until the context finishes initializing when its setup also depends on other services.
 
 Save this root as `EcsContext.cs`, assign an inactive entity group, and place the root outside that group:
 
@@ -70,7 +96,7 @@ public sealed class EcsContext : SFContextRoot
 }
 ```
 
-With the checked SF Configs loader, place this configuration in `Assets/Resources/SFWorldsConfig.json`. It defines one named world and empty phase lists:
+With SF Configs, place this configuration in `Assets/Resources/SFWorldsConfig.json`. It defines one named world and empty phase lists:
 
 ```json
 {
@@ -89,13 +115,11 @@ With the checked SF Configs loader, place this configuration in `Assets/Resource
 }
 ```
 
-`SFWorldConfig` defaults to 512 for entity, recycled-entity, pool, filter, dense-pool, and recycled-pool capacities; `EntityComponentsSize` defaults to 8. `SFWorldsService` forwards those fields to `EcsWorld.Config`. Keep `Config` and each phase array non-null.
+`SFWorldConfig` defaults to 512 for entity, recycled-entity, pool, filter, dense-pool, and recycled-pool capacities. `EntityComponentsSize` defaults to 8. Missing `Config` uses these defaults, and missing phase arrays have no systems.
 
-The service indexes named worlds by `SFWorldNode.Id`, such as `Gameplay`. An empty or unknown name returns its separate fallback world. `Worlds` excludes that fallback; the fallback has no configured systems.
+The service looks up the same full IDs as the SF Configs drawer, such as `ECS/Gameplay`. A short ID such as `Gameplay` remains valid when it identifies one configured world. Empty, unknown, and ambiguous names return the fallback world. `Worlds` lists the configured worlds. The fallback has no configured systems.
 
-**World selector caveat:** the checked SF Configs drawer writes full paths such as `ECS/Gameplay`, while this service looks up `Gameplay`. Verify the serialized entity world string and the result of `GetWorld`. A full-path dropdown value can route the entity into the fallback world. Use the required short ID through your project tooling until the selector/lookup contract agrees.
-
-## Component authoring
+### Component authoring
 
 Save the struct below as `Health.cs` in your project. The editor generator scans `[SFGenerateComponent]` structs and writes `_Health.cs` beside that file, in the same namespace.
 
@@ -108,7 +132,7 @@ namespace Example.Ecs
 {
     [Serializable]
     [SFGenerateComponent]
-    public struct Health : ISFComponent, IEcsAutoInit<Health>
+    public struct Health : ISFComponent, ISFEcsAutoInit<Health>
     {
         public int Current;
 
@@ -124,11 +148,11 @@ Add `_Health` from the `SFComponents` menu. Its generated `RequireComponent` att
 
 `SFComponent<T>.Setup` caches the world/pool and packed handle, runs auto-initialization, and adds a copy of `_value` to the pool. This variant exposes a protected authoring field rather than a public `Value` property. Edit the live pool for changes after creation.
 
-Use **Edit → SFramework → Regenerate ECS Components** to force regeneration; editor-load generation skips existing files. The source file must match `<TypeName>.cs`. An unresolved source path logs a warning and skips that type. `SFGenerateComponentAttribute(Type customBaseType)` supports a custom provider base.
+Use **Edit → SFramework → Regenerate ECS Components** to force regeneration. Editor-load generation skips existing files. The source file must match `<TypeName>.cs`. The generator identifies the script by type when possible and uses the containing assembly to resolve remaining candidates. It reports ambiguous or unavailable files and skips generation for those types. `SFGenerateComponentAttribute(Type customBaseType)` supports an inheritable `MonoBehaviour` provider base.
 
 Providers can dispatch `ISFDrawGizmos<T>` and `ISFDrawGizmosSelected<T>` from live pool data. They need a valid entity and component first, so they do not draw from the serialized value before entity creation.
 
-## Entity lifecycle
+### Entity lifecycle
 
 ```mermaid
 flowchart LR
@@ -139,22 +163,21 @@ flowchart LR
     E --> F[GameObject mapping]
 ```
 
-`SFView` injects the entity and calls `Init()`, which discovers providers and caches the selected world and reference pools. `OnEnable()` then calls `CreateEntity()`. Creation adds `GameObjectRef`, `TransformRef`, and `RootEntity` when the cached hierarchy check marks the GameObject as a root. `OnValidate()` determines that flag from ancestor `SFEntity` components.
+`SFView` injects the entity and calls `Init()`, which discovers providers. `OnEnable()` creates the entity once the selected world is available. Creation looks up the world, registers the GameObject mapping, and adds `GameObjectRef`, `TransformRef`, and `RootEntity` when the hierarchy check marks the GameObject as a root. `OnValidate()` determines that flag from ancestor `SFEntity` components. If provider setup throws, creation deletes the entity and removes its mapping so callers can retry.
 
 `removeEntityOnDisable` defaults to false. In that mode, disabling the GameObject retains its entity and mapping; ECS systems can still encounter it. Set the flag to true to delete on disable and create a new entity on re-enable. `OnDestroy()` deletes a created entity.
 
-Treat `EcsPackedEntity` as a handle that can expire. This variant returns it by reference. Avoid overwriting it: lifecycle methods depend on that stored value.
+Treat `SFEcsPackedEntity` as a handle that can expire. This variant returns it by reference. Avoid overwriting it: lifecycle methods depend on that stored value.
 
-## Systems and phase order
+### Systems and phase order
 
-Each configured world owns separate `EcsSystems` lists for fixed, regular, and late updates. The service constructs enabled `IEcsSystem` types in array order with `Activator.CreateInstance`, then calls `.Inject().Init()` on each list. `SFECSCallbacks` forwards Unity's three update phases to `Run()`.
+Each configured world owns separate `SFEcsSystems` lists for fixed, regular, and late updates. The service constructs enabled `ISFEcsSystem` types in array order with `Activator.CreateInstance`, then calls `Init()` on each list. `SFEcsSystems.Init()` performs SF Core injection before lifecycle callbacks. `SFECSCallbacks` forwards Unity's three update phases to `Run()`.
 
-Use concrete systems with parameterless constructors. Store `typeof(YourSystem).AssemblyQualifiedName` in `SFSystemContainer.System`; unresolved names and non-system types get skipped. Putting the same type in two phases creates two instances. Duplicate world IDs get skipped.
+Use concrete systems with public parameterless constructors. Store `typeof(YourSystem).AssemblyQualifiedName` in `SFSystemContainer.System`. Invalid entries log a warning that names the world and phase. Putting the same type in two phases creates two instances. Duplicate full world IDs get skipped.
 
-`SFSystem.PreInit` performs SF Core injection. Its run hook uses the Lite signature:
+`SFSystem` implements `ISFInjectable` and receives SF Core injection from its pipeline. Its run hook keeps the existing signature:
 
 ```csharp
-using Leopotam.EcsLite;
 using SFramework.ECS.Runtime;
 
 namespace Example.Ecs
@@ -163,7 +186,7 @@ namespace Example.Ecs
     {
         public int TickCount { get; private set; }
 
-        protected override void Tick(ref IEcsSystems systems)
+        protected override void Tick(ref ISFEcsSystems systems)
         {
             TickCount++;
         }
@@ -173,17 +196,17 @@ namespace Example.Ecs
 
 Add a configuration entry with `Enabled = true` and `System = typeof(CountTicksSystem).AssemblyQualifiedName` to the desired phase. There is no system-name picker on the `System` string field in this package.
 
-For pipelines you build yourself, `SFExtensions.Add(ISFSystem[])` accepts individual Lite systems and one level of `ISFSystemsGroup`. It does not recurse into nested groups. The configured worlds service instantiates `IEcsSystem` entries directly and does not use this group-expansion helper.
+For pipelines you build yourself, `SFExtensions.Add(ISFSystem[])` accepts individual Lite systems and one level of `ISFSystemsGroup`. It does not recurse into nested groups. The configured worlds service instantiates `ISFEcsSystem` entries directly and does not use this group-expansion helper.
 
-## Public API
+## API
 
 | API | Behavior |
 | --- | --- |
 | [`ISFWorldsService`](Runtime/ISFWorldsService.cs) | `GetWorld(string name = "")` and configured `Worlds`. |
 | [`SFWorldsService`](Runtime/SFWorldsService.cs) | `Init(CancellationToken)`, phase callbacks, and `Dispose()`. |
-| [`SFEntity`](Runtime/SFEntity.cs) | Ref-return packed handle, `CreateEntity()`, `DestroyEntity()`, `RecreateEntity()`, and `removeEntityOnDisable`. See recreation limit below. |
+| [`SFEntity`](Runtime/SFEntity.cs) | Ref-return packed handle, `CreateEntity()`, `DestroyEntity()`, `RecreateEntity()`, and `removeEntityOnDisable`. |
 | [`SFComponent<T>`](Runtime/SFComponent.cs) | Serialized authoring, auto-init, and live gizmo hooks. |
-| [`SFSystem`](Runtime/SFSystem.cs) | SF injection in `PreInit` and `Tick(ref IEcsSystems)`. |
+| [`SFSystem`](Runtime/SFSystem.cs) | SF Core injection by `SFEcsSystems.Init()` and `Tick(ref ISFEcsSystems)`. |
 | [`SFSystemsGroupBase`](Runtime/SFSystemsGroupBase.cs) | Abstract `Systems` array and implicit array conversion. |
 | [`SFEntityMapping`](Runtime/SFEntityMapping.cs) | World/entity and packed lookups, null checks, and `Clear()`. |
 | [`SFExtensions`](Runtime/SFExtensions.cs) | Pool `Replace`, system-array `Add`, and GameObject lookup extensions. |
@@ -191,18 +214,28 @@ For pipelines you build yourself, `SFExtensions.Add(ISFSystem[])` accepts indivi
 
 `Replace<T>` returns existing pool data or adds a component. `TryGetEntityPacked` confirms a mapping entry; call `Unpack` to confirm a live entity. `Clear()` removes mappings without deleting entities.
 
-## Known limits
+## Behavior and limitations
 
-- `DestroyEntity()` does not reset `_createdEntity`. As a result, `RecreateEntity()` deletes a created entity, then `CreateEntity()` returns because the flag remains true. Calling `DestroyEntity()` followed by `CreateEntity()` has the same problem. The disable path resets the flag when `removeEntityOnDisable` is true.
-- `Dispose()` clears lists and unsubscribes callbacks. It does not destroy `EcsSystems`, worlds, or the persistent callback GameObject. Define host ownership and cleanup before repeated bootstraps.
-- Repeated `Init()` calls can subscribe the same callbacks again. Initialize each service instance once.
-- The world selector and lookup use different ID shapes with the checked Configs drawer, as described above.
-- Serialized type names need updates after assembly/type renames. `SFSerializableType` can keep a non-empty unresolved name with a null `Type`; its drawer assumes at least one candidate.
+- `Dispose()` stops phase callbacks, shuts down pipelines while their worlds are still alive, and destroys the relay, configured worlds, and fallback world. World shutdown also removes their GameObject mappings. A new bootstrap uses a new service instance.
+- `Init()` is idempotent after success. If initialization fails, the service tears down started pipelines and their worlds before allowing a retry.
+- Serialized type names need updates after assembly or type renames. `SFSerializableType` preserves unresolved names, which the Inspector displays as missing until you select a replacement.
 
-## Validation, related packages, and license
+## Tests
 
-This README describes source at commit [`e24b463`](https://github.com/huran438/sf-ecs-odin/commit/e24b4635c7bf2d13a395ed9a54224e0cfe21a4eb). The examples received static source review only. No Unity compilation, Play Mode, player build, or automated test execution accompanied this documentation. The package declares no minimum Unity version.
+Package tests are in [Tests/Editor](Tests/Editor) and use the `SFramework.ECS.Editor.Tests` assembly. Install Unity Test Framework (`com.unity.test-framework`) in the host project. Test assemblies are Editor-only and gated by `UNITY_INCLUDE_TESTS`.
 
-[SF Core](https://github.com/huran438/sf-core) and [SF Configs](https://github.com/huran438/sf-configs) provide the supporting lifecycle/configuration. [SF ECS Tween](https://github.com/huran438/sf-ecs-tween) supplies Lite tween data and interpolation helpers. [SF ECS Proto](https://github.com/huran438/sf-ecs-proto) uses Proto rather than Lite.
+Add `sp.sframework.ecs.odin` to the top-level `testables` array in the host project's `Packages/manifest.json`, preserving its dependencies and any existing testable entries:
 
-This repository uses the [MIT license](LICENSE.md). Odin and other dependencies retain their own licensing terms.
+```json
+{
+  "testables": ["sp.sframework.ecs.odin"]
+}
+```
+
+Open **Window > General > Test Runner**, select **EditMode**, and run `SFramework.ECS.Editor.Tests`. The `sf-demo` host enables all SFramework package tests in its manifest.
+
+The tests require the same Odin Inspector/Serializer DLLs and SFramework dependencies as the package. They exercise the embedded kernel, dependency injection, world routing, shutdown, and provider behavior. Inspector interaction and player builds require separate validation.
+
+## License
+
+SFramework code is MIT. See [LICENSE.md](LICENSE.md). The embedded sources carry their license terms in the source headers. Odin and other dependencies retain their own licensing terms.

@@ -3,11 +3,17 @@
   "name": "sp.sframework.ecs.odin",
   "displayName": "SF ECS Odin",
   "version": "0.1.0",
-  "description": "SFramework ECS with Odin authoring",
+  "unity": "6000.0",
+  "description": "Self-contained ECS runtime and Odin authoring with SF Core dependency injection",
   "keywords": [
     "ecs",
     "odin"
   ],
   "category": "SFramework",
+  "dependencies": {
+    "sp.sframework.core": "0.2.0",
+    "sp.sframework.configs": "1.0.0",
+    "com.cysharp.unitask": "2.5.11"
+  },
   "type": "library"
 }

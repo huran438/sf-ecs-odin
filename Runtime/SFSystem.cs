@@ -1,22 +1,21 @@
-﻿using Leopotam.EcsLite;
 using SFramework.Core.Runtime;
 
 namespace SFramework.ECS.Runtime
 {
-    public abstract class SFSystem : IEcsPreInitSystem, IEcsRunSystem, ISFInjectable, ISFSystem
+    public abstract class SFSystem : ISFEcsPreInitSystem, ISFEcsRunSystem, ISFInjectable, ISFSystem
     {
-        public void PreInit(IEcsSystems systems)
+        public void PreInit(ISFEcsSystems systems)
         {
-            this.Inject();
+            // SFEcsSystems.Init performs SF Core injection before all PreInit callbacks.
         }
 
-        public void Run(IEcsSystems systems)
+        public void Run(ISFEcsSystems systems)
         {
             Tick(ref systems);
         }
 
 
-        protected virtual void Tick(ref IEcsSystems systems)
+        protected virtual void Tick(ref ISFEcsSystems systems)
         {
         }
     }

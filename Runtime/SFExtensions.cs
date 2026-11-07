@@ -1,11 +1,10 @@
-﻿using Leopotam.EcsLite;
 using UnityEngine;
 
 namespace SFramework.ECS.Runtime
 {
     public static class SFExtensions
     {
-        public static ref T Replace<T>(this EcsPool<T> pool, int entity) where T : struct
+        public static ref T Replace<T>(this SFEcsPool<T> pool, int entity) where T : struct
         {
             if (pool.Has(entity))
             {
@@ -15,11 +14,11 @@ namespace SFramework.ECS.Runtime
             return ref pool.Add(entity);
         }
 
-        public static IEcsSystems Add(this IEcsSystems ecsSystems, ISFSystem[] systems)
+        public static ISFEcsSystems Add(this ISFEcsSystems ecsSystems, ISFSystem[] systems)
         {
             foreach (var system in systems)
             {
-                if (system is IEcsSystem ecsSystem)
+                if (system is ISFEcsSystem ecsSystem)
                 {
                     ecsSystems.Add(ecsSystem);
                 }
@@ -27,7 +26,7 @@ namespace SFramework.ECS.Runtime
                 {
                     foreach (var systemG in systemsGroup.Systems)
                     {
-                        if (systemG is not IEcsSystem ecsSystemG) continue;
+                        if (systemG is not ISFEcsSystem ecsSystemG) continue;
                         ecsSystems.Add(ecsSystemG);
                     }
                 }
@@ -41,7 +40,7 @@ namespace SFramework.ECS.Runtime
             return SFEntityMapping.GetEntity(gameObject, out entity);
         }
 
-        public static bool TryGetEntityPacked(this GameObject gameObject, out EcsPackedEntityWithWorld packedEntity)
+        public static bool TryGetEntityPacked(this GameObject gameObject, out SFEcsPackedEntityWithWorld packedEntity)
         {
             return SFEntityMapping.GetEntityPacked(gameObject, out packedEntity);
         }

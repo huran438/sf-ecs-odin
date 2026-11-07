@@ -1,5 +1,4 @@
 using System;
-using Leopotam.EcsLite;
 using Sirenix.OdinInspector;
 using UnityEngine;
 
@@ -13,17 +12,17 @@ namespace SFramework.ECS.Runtime
         [SerializeField]
         protected T _value;
 
-        private EcsPackedEntityWithWorld _packedEntityWithWorld;
-        private EcsPool<T> _pool;
+        private SFEcsPackedEntityWithWorld _packedEntityWithWorld;
+        private SFEcsPool<T> _pool;
 
-        public void Setup(ref EcsPackedEntityWithWorld packedEntity)
+        public void Setup(ref SFEcsPackedEntityWithWorld packedEntity)
         {
             if (!packedEntity.Unpack(out var world, out var entity)) return;
 
             _pool = world.GetPool<T>();
             _packedEntityWithWorld = packedEntity;
 
-            if (_value is IEcsAutoInit<T> autoInit)
+            if (_value is ISFEcsAutoInit<T> autoInit)
             {
                 autoInit.AutoInit(ref _value);
             }

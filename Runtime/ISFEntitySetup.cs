@@ -1,9 +1,8 @@
-using Leopotam.EcsLite;
 
 namespace SFramework.ECS.Runtime
 {
     public interface ISFEntitySetup
     {
-        void Setup(ref EcsPackedEntityWithWorld packedEntity);
+        void Setup(ref SFEcsPackedEntityWithWorld packedEntity);
     }
 }

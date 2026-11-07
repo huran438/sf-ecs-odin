@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using Leopotam.EcsLite;
 using SFramework.Core.Runtime;
 using UnityEngine;
 
@@ -7,19 +6,19 @@ namespace SFramework.ECS.Runtime
 {
     public static class SFEntityMapping
     {
-        private static readonly Dictionary<int, EcsPackedEntityWithWorld> _packedEntities;
+        private static readonly Dictionary<int, SFEcsPackedEntityWithWorld> _packedEntities;
 
         static SFEntityMapping()
         {
-            _packedEntities = new Dictionary<int, EcsPackedEntityWithWorld>();
+            _packedEntities = new Dictionary<int, SFEcsPackedEntityWithWorld>();
         }
 
-        static internal void AddMapping(GameObject gameObject, ref EcsWorld world, ref int entity)
+        static internal void AddMapping(GameObject gameObject, ref SFEcsWorld world, ref int entity)
         {
             _packedEntities[gameObject.GetInstanceID()] = world.PackEntityWithWorld(entity);
         }
 
-        static internal void AddMapping(GameObject gameObject, ref EcsPackedEntityWithWorld entity)
+        static internal void AddMapping(GameObject gameObject, ref SFEcsPackedEntityWithWorld entity)
         {
             _packedEntities[gameObject.GetInstanceID()] = entity;
         }
@@ -27,14 +26,24 @@ namespace SFramework.ECS.Runtime
         static internal void RemoveMapping(GameObject gameObject)
         {
             var instanceId = gameObject.GetInstanceID();
-            
+
             if (_packedEntities.ContainsKey(instanceId))
             {
                 _packedEntities.Remove(instanceId);
             }
         }
 
-        public static bool GetEntity(GameObject gameObject, out EcsWorld world, out int entity)
+        internal static void RemoveMappings(SFEcsWorld world)
+        {
+            var keys = new List<int>();
+            foreach (var entry in _packedEntities)
+            {
+                if (entry.Value.World == world) keys.Add(entry.Key);
+            }
+            foreach (var key in keys) _packedEntities.Remove(key);
+        }
+
+        public static bool GetEntity(GameObject gameObject, out SFEcsWorld world, out int entity)
         {
             if (gameObject == null)
             {
@@ -43,19 +52,19 @@ namespace SFramework.ECS.Runtime
                 world = default;
                 return false;
             }
-            
+
             var instanceId = gameObject.GetInstanceID();
-            
+
             if (_packedEntities.TryGetValue(instanceId, out var packedEntityWithWorld))
             {
                 return packedEntityWithWorld.Unpack(out world, out entity);
             }
-            
+
             entity = default;
             world = default;
             return false;
         }
-        
+
         public static bool GetEntity(GameObject gameObject, out int entity)
         {
             if (gameObject == null)
@@ -64,19 +73,19 @@ namespace SFramework.ECS.Runtime
                 entity = default;
                 return false;
             }
-            
+
             var instanceId = gameObject.GetInstanceID();
-            
+
             if (_packedEntities.TryGetValue(instanceId, out var packedEntityWithWorld))
             {
                 return packedEntityWithWorld.Unpack(out _, out entity);
             }
-            
+
             entity = default;
             return false;
         }
 
-        public static bool GetEntityPacked(GameObject gameObject, out EcsPackedEntityWithWorld packedEntity)
+        public static bool GetEntityPacked(GameObject gameObject, out SFEcsPackedEntityWithWorld packedEntity)
         {
             if (gameObject == null)
             {
@@ -84,9 +93,9 @@ namespace SFramework.ECS.Runtime
                 packedEntity = default;
                 return false;
             }
-            
+
             var instanceId = gameObject.GetInstanceID();
-            
+
             if (_packedEntities.TryGetValue(instanceId, out var packedEntityWithWorld))
             {
                 packedEntity = packedEntityWithWorld;

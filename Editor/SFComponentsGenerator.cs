@@ -3,10 +3,9 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
-using SFramework.Core.Editor;
-using SFramework.Core.Runtime;
 using SFramework.ECS.Runtime;
 using UnityEditor;
+using UnityEditor.Compilation;
 using UnityEngine;
 
 namespace SFramework.ECS.Editor
@@ -19,17 +18,9 @@ namespace SFramework.ECS.Editor
 using UnityEngine;
 using Sirenix.OdinInspector;
 
-namespace @@NAMESPACE@@
-{
-#if IL2CPP_OPTIMIZATIONS
-    [Unity.IL2CPP.CompilerServices.Il2CppSetOption(Unity.IL2CPP.CompilerServices.Option.NullChecks, false)]
-    [Unity.IL2CPP.CompilerServices.Il2CppSetOption(Unity.IL2CPP.CompilerServices.Option.ArrayBoundsChecks, false)]
-    [Unity.IL2CPP.CompilerServices.Il2CppSetOption(Unity.IL2CPP.CompilerServices.Option.DivideByZeroChecks, false)]
-#endif
-    [DisallowMultipleComponent, AddComponentMenu(""SFComponents/@@NAME@@""), HideMonoScript, RequireComponent(typeof(SFEntity))]
-    public sealed class _@@COMPONENTNAME@@ : SFComponent<@@COMPONENTNAME@@> {}
-}
-";
+@@NAMESPACE_OPEN@@[DisallowMultipleComponent, AddComponentMenu(""SFComponents/@@MENU_NAME@@""), HideMonoScript, RequireComponent(typeof(SFEntity))]
+public sealed class _@@NAME@@ : @@BASE_TYPE@@ {}
+@@NAMESPACE_CLOSE@@";
 
         static SFComponentsGenerator()
         {
@@ -38,57 +29,85 @@ namespace @@NAMESPACE@@
 
         public static void Generate(bool force = false)
         {
-            var authoringsToGenerate = AppDomain.CurrentDomain.GetAssemblies()
-                .SelectMany(a => a.GetTypes())
-                .Where(t => t.IsValueType && t.GetCustomAttribute<SFGenerateComponentAttribute>() != null)
-                .ToList();
-
-            foreach (var type in authoringsToGenerate)
+            var generatedAny = false;
+            foreach (var type in TypeCache.GetTypesWithAttribute<SFGenerateComponentAttribute>())
             {
-                var filter = $"t:Script {type.Name}";
-                var pathOfAsset = AssetDatabase.FindAssets(filter).Select(AssetDatabase.GUIDToAssetPath)
-                    .FirstOrDefault(p => p.EndsWith($"/{type.Name}.cs"));
-
-                if (string.IsNullOrEmpty(pathOfAsset))
+                if (!type.IsValueType || type.IsByRefLike || type.ContainsGenericParameters || type.IsNestedPrivate)
                 {
-                    SFDebug.Log(LogType.Warning, "Can't generate file by path: {0}, Type: {1}", pathOfAsset, type.FullName);
+                    Debug.LogWarning($"Skipping ECS provider for unsupported component '{type.FullName}'.");
                     continue;
                 }
 
-
-                var template = providerFileTemplate;
-
-
-                var attribute = type.GetCustomAttribute(typeof(SFGenerateComponentAttribute)) as SFGenerateComponentAttribute;
-
-                if (attribute != null)
+                var sourcePath = FindSourcePath(type);
+                if (sourcePath == null || !File.Exists(sourcePath))
                 {
-                    if (attribute.CustomBaseType != null)
-                    {
-                        template = template.Replace("SFComponent<@@COMPONENTNAME@@>", attribute.CustomBaseType.FullName.Replace("`1", "<@@COMPONENTNAME@@>"));
-                    }
+                    Debug.LogWarning($"Could not locate a unique writable '{type.Name}.cs' for '{type.FullName}'.");
+                    continue;
                 }
 
+                var providerPath = Path.Combine(Path.GetDirectoryName(sourcePath), $"_{type.Name}.cs");
+                if (!force && File.Exists(providerPath)) continue;
 
-                var simplePath = pathOfAsset.Replace($"{type.Name}.cs", $"_{type.Name}.cs");
-
-                if (!force)
+                string fileContent;
+                try
                 {
-                    if (File.Exists(simplePath))
-                    {
-                        continue;
-                    }
+                    fileContent = GenerateProviderSource(type);
+                }
+                catch (ArgumentException exception)
+                {
+                    Debug.LogWarning($"Could not generate an ECS provider for '{type.FullName}'. {exception.Message}");
+                    continue;
                 }
 
-                var fileContent = template
-                    .Replace("@@NAMESPACE@@", type.Namespace)
-                    .Replace("@@COMPONENTNAME@@", type.Name)
-                    .Replace("@@NAME@@", AddSpacesToSentence(type.Name).Replace("Ref", "Reference"));
-
-                File.WriteAllText(simplePath, fileContent, Encoding.UTF8);
-                AssetDatabase.Refresh(ImportAssetOptions.Default);
-                AssetDatabase.SaveAssets();
+                if (File.Exists(providerPath) && File.ReadAllText(providerPath) == fileContent) continue;
+                File.WriteAllText(providerPath, fileContent, Encoding.UTF8);
+                generatedAny = true;
             }
+
+            if (generatedAny) AssetDatabase.Refresh();
+        }
+
+        private static string FindSourcePath(Type type)
+        {
+            var fileName = $"{type.Name}.cs";
+            var candidates = AssetDatabase.FindAssets($"t:Script {type.Name}")
+                .Select(AssetDatabase.GUIDToAssetPath)
+                .Where(path => Path.GetFileName(path) == fileName)
+                .ToArray();
+
+            var exactMatch = candidates.FirstOrDefault(path => AssetDatabase.LoadAssetAtPath<MonoScript>(path)?.GetClass() == type);
+            if (exactMatch != null) return exactMatch;
+
+            var assemblyName = type.Assembly.GetName().Name;
+            var assemblyMatches = candidates.Where(path =>
+                Path.GetFileNameWithoutExtension(CompilationPipeline.GetAssemblyNameFromScriptPath(path)) == assemblyName)
+                .Take(2).ToArray();
+            return assemblyMatches.Length == 1 ? assemblyMatches[0] : null;
+        }
+
+        private static string GenerateProviderSource(Type type)
+        {
+            var baseType = type.GetCustomAttribute<SFGenerateComponentAttribute>()?.CustomBaseType ?? typeof(SFComponent<>);
+            if (baseType.IsGenericTypeDefinition && baseType.GetGenericArguments().Length == 1)
+                baseType = baseType.MakeGenericType(type);
+            if (baseType.ContainsGenericParameters || baseType.IsSealed || !typeof(MonoBehaviour).IsAssignableFrom(baseType))
+                throw new ArgumentException($"'{baseType}' must be an inheritable MonoBehaviour type.");
+
+            return providerFileTemplate
+                .Replace("@@NAMESPACE_OPEN@@", type.Namespace == null ? "" : $"namespace {type.Namespace}\n{{\n")
+                .Replace("@@NAMESPACE_CLOSE@@", type.Namespace == null ? "" : "}\n")
+                .Replace("@@NAME@@", type.Name)
+                .Replace("@@MENU_NAME@@", AddSpacesToSentence(type.Name).Replace("Ref", "Reference"))
+                .Replace("@@BASE_TYPE@@", GetTypeName(baseType));
+        }
+
+        private static string GetTypeName(Type type)
+        {
+            if (!type.IsGenericType) return $"global::{type.FullName.Replace('+', '.')}";
+
+            var fullName = type.GetGenericTypeDefinition().FullName;
+            var arguments = string.Join(", ", type.GetGenericArguments().Select(GetTypeName));
+            return $"global::{fullName.Substring(0, fullName.IndexOf('`')).Replace('+', '.')}<{arguments}>";
         }
 
         static string AddSpacesToSentence(string text, bool preserveAcronyms = true)
