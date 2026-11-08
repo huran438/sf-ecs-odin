@@ -126,6 +126,10 @@ namespace SFramework.ECS.Runtime
             return false;
         }
 #endif
+#if UNITY_EDITOR
+        public string DebugName { get; internal set; }
+#endif
+
         public SFEcsWorld(in Config cfg = default)
         {
             // entities.
@@ -156,6 +160,9 @@ namespace SFramework.ECS.Runtime
             _eventListeners = new List<ISFEcsWorldEventListener>(4);
 #endif
             _destroyed = false;
+#if UNITY_EDITOR
+            SFEcsEditorWorlds.Track(this);
+#endif
         }
 
         public void Destroy()
@@ -178,6 +185,9 @@ namespace SFramework.ECS.Runtime
             }
 #endif
             _destroyed = true;
+#if UNITY_EDITOR
+            SFEcsEditorWorlds.PruneDestroyedWorlds();
+#endif
             for (var i = _entitiesCount - 1; i >= 0; i--)
             {
                 if (IsEntityAliveInternal(i))

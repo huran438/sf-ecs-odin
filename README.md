@@ -44,7 +44,7 @@ The runtime sources live directly in `Runtime`, alongside the authoring integrat
 
 The existing `ISFSystem` authoring marker and `SFEntity.EcsPackedEntity` property keep their names. `.editorconfig` defines the package's C# formatting conventions.
 
-Replace Lite DI service wrappers with automatic mutable service fields on a partial `ISFInjectable` system (or derive from `SFSystem`). Obtain ECS data from `systems.GetWorld()`, `world.GetPool<T>()` and `world.Filter<T>().End()` inside `Init(ISFEcsSystems)` or `Tick`. Named worlds and shared data remain available through `GetWorld(name)` and `GetShared<T>()`. The separate Lite DI wrappers such as `EcsPoolInject<T>` and `EcsFilterInject<T>` are not included.
+Use automatic mutable service fields on a partial `ISFInjectable` system (or derive from `SFSystem`). Inject `ISFEcsContext` for pipeline-scoped worlds, pools, filters, and shared data. See [ECS dependency injection](#ecs-dependency-injection) for setup.
 
 `SFEcsSystems.Init()` injects all `ISFInjectable` systems through `SFContainer` before any `PreInit` or `Init` callback, including manually built pipelines. Register services before calling `Init`; a separate `.Inject()` call is no longer needed. Each system receives injection once per pipeline initialization, and existing lifecycle callbacks keep their order. SFInject was removed; migrate properties/methods to fields and lifecycle hooks.
 
@@ -197,6 +197,53 @@ namespace Example.Ecs
 Add a configuration entry with `Enabled = true` and `System = typeof(CountTicksSystem).AssemblyQualifiedName` to the desired phase. There is no system-name picker on the `System` string field in this package.
 
 For pipelines you build yourself, `SFExtensions.Add(ISFSystem[])` accepts individual Lite systems and one level of `ISFSystemsGroup`. It does not recurse into nested groups. The configured worlds service instantiates `ISFEcsSystem` entries directly and does not use this group-expansion helper.
+
+### ECS dependency injection
+
+Declare a mutable `ISFEcsContext` field on a partial system. SF Core fills the field alongside ordinary service dependencies. Cache the pools and filters you need in `ISFInjectionCallback.OnDependenciesInjected()` or in `Init()`.
+
+```csharp
+public sealed partial class MoveSystem : SFSystem, ISFInjectionCallback
+{
+    private ISFEcsContext _ecs;
+    private SFEcsPool<Position> _positions;
+    private SFEcsFilter _moving;
+
+    public void OnDependenciesInjected()
+    {
+        _positions = _ecs.GetPool<Position>();
+        _moving = _ecs.Filter<Position>().Inc<Velocity>().End();
+    }
+}
+```
+
+Use `GetWorld(name)`, `GetPool<T>(name)`, and `Filter<T>(name)` for named worlds. Register names with `AddWorld()` on standalone pipelines. Configured pipelines expose all configured worlds under their full IDs, such as `Gameplay/Events`. An omitted name selects the pipeline's own world. Unknown names throw. `GetShared<T>()` returns the optional shared object passed to `new SFEcsSystems(world, shared)`. Register custom application dependencies through SF Core and inject them in separate fields.
+
+### Switchable groups and event cleanup
+
+```csharp
+var pipeline = new SFEcsSystems(world);
+pipeline.AddWorld(events, "events")
+    .AddGroup("Movement", true, "events", new MoveSystem())
+    .DelHere<MovementEvent>("events");
+pipeline.Init();
+```
+
+`DelHere<T>()` removes that component at its position in the run phase and preserves other components on the same entity. Use a unique group name within each event world. To switch a group, add an `SFEcsGroupSystemState` component to an entity in that world and set its `Name` and `State`. The group consumes matching events before its run and post-run callbacks. Disabled groups still initialize and shut down their children. Nested children receive SF Core injection before any system begins PreInit. For a configured pipeline, use concrete subclasses of `SFEcsGroupSystem` or `SFEcsDelHereSystem<T>` with public parameterless constructors.
+
+### ECS Monitor
+
+In Unity Play Mode, open **Window → SFramework → ECS Monitor**. Select a world and search by entity ID or component type. The window refreshes entity IDs, generations, and component values while the game runs. It also sees standalone worlds created in the editor.
+
+Use **Add component** to search for `ISFComponent` types, types marked with `SFGenerateComponent`, and component types already registered in that world. Use **Remove** on a component's header. Removing the last component also removes the entity.
+
+Edit public and explicitly exposed fields in place. Numeric values, enums, common Unity value types, and Unity object references use typed controls. Nested value-type fields can be edited. Read-only fields and the contents of managed objects and collections are shown as previews. Each edit is merged into the latest component value.
+
+### ECS Systems Profiler
+
+In Unity Play Mode, open **Window → SFramework → ECS Systems Profiler**. Select a world and phase to see the configured system order and nested groups. Standalone pipelines appear under **Manual**.
+
+The **Run** and **PostRun** columns show the last, average, and peak callback time in milliseconds and the invocation count. Group timings include their children and state checks. A disabled group can still check for state changes, while its disabled descendants stop receiving callbacks. Use **Record** to pause or resume collection and **Clear** to reset the measurements. Closing the window or leaving Play Mode ends the recording.
 
 ## API
 

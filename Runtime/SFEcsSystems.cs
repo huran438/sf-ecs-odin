@@ -72,6 +72,11 @@ namespace SFramework.ECS.Runtime
         private readonly List<ISFEcsRunSystem> _runSystems;
         private readonly List<ISFEcsPostRunSystem> _postRunSystems;
         private readonly object _shared;
+#if UNITY_EDITOR
+        internal SFEcsSystemsProfiler.SystemSlots ProfilerSlots { get; } = new();
+        internal (string WorldName, string Phase) ProfilerLocation { get; set; }
+        internal bool IsProfilerWorldAlive => _defaultWorld?.IsAlive() != false;
+#endif
 #if DEBUG
         protected bool _inited;
 #endif
@@ -112,6 +117,9 @@ namespace SFramework.ECS.Runtime
             }
 #endif
             _worlds[name] = world;
+#if UNITY_EDITOR
+            if (world != null && !string.IsNullOrEmpty(name)) world.DebugName = name;
+#endif
             return this;
         }
 
@@ -147,6 +155,9 @@ namespace SFramework.ECS.Runtime
             {
                 _postRunSystems.Add(postRunSystem);
             }
+#if UNITY_EDITOR
+            ProfilerSlots.Add(system);
+#endif
             return this;
         }
 
@@ -163,13 +174,11 @@ namespace SFramework.ECS.Runtime
                 throw new System.Exception("Already initialized.");
             }
 #endif
-            // Fill all SF dependencies before any system begins its lifecycle.
+            // Use the SF Core generated injector with this pipeline's ECS context.
+            var resolver = new SFEcsContext(this, SFContainer.Current);
             foreach (var system in _allSystems)
             {
-                if (system is ISFInjectable)
-                {
-                    SFContainer.Inject(system);
-                }
+                InjectSystem(system, resolver);
             }
             foreach (var system in _allSystems)
             {
@@ -202,6 +211,27 @@ namespace SFramework.ECS.Runtime
 #if DEBUG
             _inited = true;
 #endif
+#if UNITY_EDITOR
+            var (profileWorldName, profilePhase) = ProfilerLocation;
+            SFEcsSystemsProfiler.Track(this, profileWorldName ?? _defaultWorld?.DebugName ?? "Unnamed world",
+                profilePhase ?? "Manual");
+#endif
+        }
+
+        private static void InjectSystem(ISFEcsSystem system, ISFResolver resolver)
+        {
+            if (system is ISFGeneratedInjectable generated)
+            {
+                generated.ValidateDependencies(resolver);
+                generated.InjectDependencies(resolver);
+            }
+            if (system is ISFInjectable && system is ISFInjectionCallback callback)
+                callback.OnDependenciesInjected();
+
+            if (system is SFEcsGroupSystem group)
+            {
+                foreach (var child in group.NestedSystems) InjectSystem(child, resolver);
+            }
         }
 
         public virtual void Run()
@@ -214,7 +244,10 @@ namespace SFramework.ECS.Runtime
 #endif
             for (int i = 0, iMax = _runSystems.Count; i < iMax; i++)
             {
-                _runSystems[i].Run(this);
+#if UNITY_EDITOR
+                using (SFEcsSystemsProfiler.Measure(this, i, postRun: false))
+#endif
+                    _runSystems[i].Run(this);
 #if DEBUG && !SFECS_NO_SANITIZE_CHECKS
                 var worldName = CheckForLeakedEntities(this);
                 if (worldName != null)
@@ -225,7 +258,10 @@ namespace SFramework.ECS.Runtime
             }
             for (int i = 0, iMax = _postRunSystems.Count; i < iMax; i++)
             {
-                _postRunSystems[i].PostRun(this);
+#if UNITY_EDITOR
+                using (SFEcsSystemsProfiler.Measure(this, i, postRun: true))
+#endif
+                    _postRunSystems[i].PostRun(this);
 #if DEBUG && !SFECS_NO_SANITIZE_CHECKS
                 var worldName = CheckForLeakedEntities(this);
                 if (worldName != null)
@@ -285,6 +321,10 @@ namespace SFramework.ECS.Runtime
             _allSystems.Clear();
             _runSystems.Clear();
             _postRunSystems.Clear();
+#if UNITY_EDITOR
+            ProfilerSlots.Clear();
+            SFEcsSystemsProfiler.Untrack(this);
+#endif
 #if DEBUG
             _inited = false;
 #endif
@@ -294,13 +334,14 @@ namespace SFramework.ECS.Runtime
 #if DEBUG && !SFECS_NO_SANITIZE_CHECKS
         public static string CheckForLeakedEntities(ISFEcsSystems systems)
         {
-            if (systems.GetWorld().CheckForLeakedEntities())
+            var defaultWorld = systems.GetWorld();
+            if (defaultWorld.CheckForLeakedEntities())
             {
                 return "default";
             }
             foreach (var pair in systems.GetAllNamedWorlds())
             {
-                if (pair.Value.CheckForLeakedEntities())
+                if (pair.Value != defaultWorld && pair.Value.CheckForLeakedEntities())
                 {
                     return pair.Key;
                 }

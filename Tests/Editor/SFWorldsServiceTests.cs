@@ -12,7 +12,7 @@ using Object = UnityEngine.Object;
 
 namespace SFramework.ECS.Tests
 {
-    public sealed class SFWorldsServiceTests
+    public sealed partial class SFWorldsServiceTests
     {
         private SFWorldsService _service;
         private SFECSCallbacks _callbacks;
@@ -58,6 +58,26 @@ namespace SFramework.ECS.Tests
             Assert.That(secondWorld.IsAlive(), Is.False);
             Assert.That(fallbackWorld.IsAlive(), Is.False);
             Assert.That(_service.Worlds, Is.Empty);
+        }
+
+        [Test]
+        public void ConfiguredGroupsInjectContextAndCanClearEventsInAWorldDeclaredLater()
+        {
+            var simulation = new SFWorldNode
+            {
+                Id = "Simulation",
+                UpdateSystems = new[] { Entry<NamedWorldGroup>(), Entry<NamedWorldCleanup>() }
+            };
+            var events = new SFWorldNode { Id = "Events" };
+            CreateService(new SFWorldsConfig { Id = "Gameplay", Worlds = new[] { simulation, events } });
+            Initialize();
+
+            var world = _service.GetWorld("Gameplay/Events");
+            Assert.That(world.Filter<TickCounts>().End().GetEntitiesCount(), Is.EqualTo(1));
+            Assert.That(_service.GetWorld("Gameplay/Simulation").GetEntitiesCount(), Is.Zero);
+
+            RaiseCallback("Update");
+            Assert.That(world.GetEntitiesCount(), Is.Zero);
         }
 
         [Test]
@@ -208,6 +228,27 @@ namespace SFramework.ECS.Tests
                 var world = systems.GetWorld();
                 world.GetPool<TickCounts>().Add(world.NewEntity());
             }
+        }
+
+        public sealed partial class NamedWorldProbe : SFSystem, ISFInjectionCallback
+        {
+            private ISFEcsContext _ecs;
+
+            public void OnDependenciesInjected()
+            {
+                var world = _ecs.GetWorld("Gameplay/Events");
+                _ecs.GetPool<TickCounts>("Gameplay/Events").Add(world.NewEntity());
+            }
+        }
+
+        public sealed class NamedWorldGroup : SFEcsGroupSystem
+        {
+            public NamedWorldGroup() : base("Probe", true, "Gameplay/Events", new NamedWorldProbe()) { }
+        }
+
+        public sealed class NamedWorldCleanup : SFEcsDelHereSystem<TickCounts>
+        {
+            public NamedWorldCleanup() : base("Gameplay/Events") { }
         }
 
         public sealed class FixedTick : ISFEcsRunSystem

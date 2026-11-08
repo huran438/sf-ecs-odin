@@ -38,6 +38,9 @@ namespace SFramework.ECS.Runtime
         {
             _configsService = provider;
             _defaultWorld = new SFEcsWorld();
+#if UNITY_EDITOR
+            _defaultWorld.DebugName = "Fallback";
+#endif
         }
 
         public UniTask Init(CancellationToken cancellationToken)
@@ -50,6 +53,7 @@ namespace SFramework.ECS.Runtime
             try
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                var registered = new List<(string Id, SFWorldNode Node)>();
                 if (_configsService.TryGetConfigs(out SFWorldsConfig[] worldConfigs) && worldConfigs != null)
                 {
                     foreach (var worldsConfig in worldConfigs)
@@ -58,9 +62,19 @@ namespace SFramework.ECS.Runtime
                         foreach (var worldNode in worldsConfig.Worlds)
                         {
                             cancellationToken.ThrowIfCancellationRequested();
-                            AddWorldContainer(worldsConfig.Id, worldNode);
+                            if (TryRegisterWorld(worldsConfig.Id, worldNode, out var id))
+                                registered.Add((id, worldNode));
                         }
                     }
+                }
+
+                foreach (var (id, node) in registered)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var world = _ecsWorlds[id];
+                    _fixedUpdateSystems.Add(StartPipeline(world, id, "FixedUpdate", node.FixedUpdateSystems));
+                    _updateSystems.Add(StartPipeline(world, id, "Update", node.UpdateSystems));
+                    _lateUpdateSystems.Add(StartPipeline(world, id, "LateUpdate", node.LateUpdateSystems));
                 }
 
                 cancellationToken.ThrowIfCancellationRequested();
@@ -96,16 +110,17 @@ namespace SFramework.ECS.Runtime
             return UniTask.CompletedTask;
         }
 
-        private void AddWorldContainer(string configId, SFWorldNode worldNode)
+        private bool TryRegisterWorld(string configId, SFWorldNode worldNode, out string fullId)
         {
+            fullId = null;
             if (string.IsNullOrWhiteSpace(worldNode?.Id))
             {
                 Debug.LogWarning($"Skipping an ECS world with no ID in configuration '{configId}'.");
-                return;
+                return false;
             }
 
-            var fullId = string.IsNullOrEmpty(configId) ? worldNode.Id : $"{configId}/{worldNode.Id}";
-            if (_ecsWorlds.ContainsKey(fullId)) return;
+            fullId = string.IsNullOrEmpty(configId) ? worldNode.Id : $"{configId}/{worldNode.Id}";
+            if (_ecsWorlds.ContainsKey(fullId)) return false;
 
             var config = worldNode.Config ?? new SFWorldConfig();
             var world = new SFEcsWorld(new SFEcsWorld.Config
@@ -119,17 +134,21 @@ namespace SFramework.ECS.Runtime
                 EntityComponentsSize = config.EntityComponentsSize
             });
 
+#if UNITY_EDITOR
+            world.DebugName = fullId;
+#endif
             _ecsWorlds.Add(fullId, world);
             if (!_shortIds.TryAdd(worldNode.Id, world)) _shortIds[worldNode.Id] = null;
-
-            _fixedUpdateSystems.Add(StartPipeline(world, fullId, "FixedUpdate", worldNode.FixedUpdateSystems));
-            _updateSystems.Add(StartPipeline(world, fullId, "Update", worldNode.UpdateSystems));
-            _lateUpdateSystems.Add(StartPipeline(world, fullId, "LateUpdate", worldNode.LateUpdateSystems));
+            return true;
         }
 
         private SFEcsSystems StartPipeline(SFEcsWorld world, string worldId, string phase, SFSystemContainer[] entries)
         {
             var pipeline = new SFEcsSystems(world);
+#if UNITY_EDITOR
+            pipeline.ProfilerLocation = (worldId, phase);
+#endif
+            foreach (var (id, namedWorld) in _ecsWorlds) pipeline.AddWorld(namedWorld, id);
             foreach (var entry in entries ?? Array.Empty<SFSystemContainer>())
             {
                 if (entry?.Enabled != true) continue;

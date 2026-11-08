@@ -11,7 +11,11 @@ Register Configs before ISFWorldsService. Named SFEntity views enabled before wo
 
 World lookup uses full configuration paths such as ECS/Gameplay and supports unambiguous short IDs. Empty, unknown, and ambiguous names select the fallback world, which has no configured systems.
 
-Use parameterless concrete system constructors and assembly-qualified System strings. Phase arrays define order and create separate instances. SFEcsSystems.Init injects ISFInjectable systems through SFContainer before all PreInit/Init callbacks. SFSystem implements that marker and uses Tick(ref ISFEcsSystems). Register services before pipeline initialization; use mutable service fields in partial consumers (no SFInject; ISFService contracts already carry ISFDependency) for services and systems.GetWorld()/GetPool<T>()/Filter<T>() for ECS data. Use the pipeline lifecycle for injection.
+Use parameterless concrete system constructors and assembly-qualified System strings. Phase arrays define order and create separate instances. SFEcsSystems.Init uses SF Core's generated field injection before all PreInit/Init callbacks, including for nested SFEcsGroupSystem children. SFSystem implements ISFInjectable and uses Tick(ref ISFEcsSystems). Use mutable service fields in partial consumers and an ISFEcsContext field to access pipeline worlds, pools, filters and shared data. Configured pipelines expose named worlds under full IDs. Cache ECS data in ISFInjectionCallback or Init when needed.
+
+Use AddGroup and SFEcsGroupSystemState for named switchable groups, and DelHere<T> to clear an event component at a specific step of the run phase. In Unity Play Mode, open Window > SFramework > ECS Monitor to inspect live worlds and add, remove, or edit components. Edits use generation-checked entity handles. Removing the last component also removes its entity.
+
+Open Window > SFramework > ECS Systems Profiler to measure Run and PostRun per system, phase and world. Group timings include nested callbacks. Standalone pipelines use the Manual phase. Record toggles sampling and Clear resets the measurements.
 
 For Unity component providers use SFGenerateComponent on a struct whose source file matches its type name. The editor generator writes an underscore-prefixed provider beside it. Regenerate deliberately and preserve user-authored component data.
 
