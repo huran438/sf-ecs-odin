@@ -4,7 +4,7 @@ namespace SFramework.ECS.Runtime
 {
     public static class SFExtensions
     {
-        public static ref T Replace<T>(this SFEcsPool<T> pool, int entity) where T : struct
+        public static ref T Replace<T>(this SFEcsPoolNative<T> pool, int entity) where T : struct
         {
             if (pool.Has(entity))
             {

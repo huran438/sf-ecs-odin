@@ -60,8 +60,8 @@ namespace SFramework.ECS.Runtime
     public class SFEcsDelHereSystem<T> : ISFEcsPreInitSystem, ISFEcsRunSystem where T : struct
     {
         private readonly string _worldName;
-        private SFEcsFilter _filter;
-        private SFEcsPool<T> _pool;
+        private SFEcsFilterNative _filter;
+        private SFEcsPoolNative<T> _pool;
 
         public SFEcsDelHereSystem(string worldName = null) => _worldName = worldName;
 
@@ -85,8 +85,8 @@ namespace SFramework.ECS.Runtime
         private readonly ISFEcsRunSystem[] _run;
         private readonly ISFEcsPostRunSystem[] _postRun;
         private readonly string _eventsWorldName;
-        private SFEcsFilter _events;
-        private SFEcsPool<SFEcsGroupSystemState> _eventPool;
+        private SFEcsFilterNative _events;
+        private SFEcsPoolNative<SFEcsGroupSystemState> _eventPool;
 
         public string Name { get; }
         public bool Enabled { get; private set; }

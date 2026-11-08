@@ -21,9 +21,9 @@ namespace SFramework.ECS.Runtime
         private SFEcsPackedEntityWithWorld _ecsPackedEntity;
         private bool _injected;
         private ISFEntitySetup[] _components;
-        private SFEcsPool<GameObjectRef> _gameObjectRefPool;
-        private SFEcsPool<TransformRef> _transformRefPool;
-        private SFEcsPool<RootEntity> _rootEntityPool;
+        private SFEcsPoolNative<GameObjectRef> _gameObjectRefPool;
+        private SFEcsPoolNative<TransformRef> _transformRefPool;
+        private SFEcsPoolNative<RootEntity> _rootEntityPool;
         private SFEcsWorld _ecsWorld;
         private Action _cancelPendingCreation;
 

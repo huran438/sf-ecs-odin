@@ -218,13 +218,15 @@ namespace SFramework.ECS.Runtime
 #endif
         }
 
-        private static void InjectSystem(ISFEcsSystem system, ISFResolver resolver)
+        private static void InjectSystem(ISFEcsSystem system, SFEcsContext resolver)
         {
             if (system is ISFGeneratedInjectable generated)
             {
                 generated.ValidateDependencies(resolver);
                 generated.InjectDependencies(resolver);
             }
+            EcsFieldInjector.Bind(system, resolver);
+
             if (system is ISFInjectable && system is ISFInjectionCallback callback)
                 callback.OnDependenciesInjected();
 

@@ -10,6 +10,7 @@ namespace SFramework.ECS.Tests
     {
         private struct Event { }
         private struct Keep { }
+        private struct Excluded { }
 
         [Test]
         public void DelHereClearsOnlyItsComponentAtItsPositionInTheNamedWorld()
@@ -97,6 +98,49 @@ namespace SFramework.ECS.Tests
             }
         }
 
+        [Test]
+        public void NestedPlainSystemReceivesDefaultAndNamedEcsFieldsBeforeAnyPreInit()
+        {
+            var world = new SFEcsWorld();
+            var combat = new SFEcsWorld();
+            var systems = new SFEcsSystems(world);
+            var child = new InjectedEcsFieldsSystem();
+            try
+            {
+                world.GetPool<Event>().Add(world.NewEntity());
+                var included = combat.NewEntity();
+                combat.GetPool<Event>().Add(included);
+                combat.GetPool<Keep>().Add(included);
+                combat.GetPool<Event>().Add(combat.NewEntity());
+                var excluded = combat.NewEntity();
+                combat.GetPool<Event>().Add(excluded);
+                combat.GetPool<Keep>().Add(excluded);
+                combat.GetPool<Excluded>().Add(excluded);
+
+                systems.AddWorld(combat, "combat")
+                    .Add(new PreInitAction(() =>
+                    {
+                        Assert.That(child.DefaultPool, Is.SameAs(world.GetPool<Event>()));
+                        Assert.That(child.CombatPool, Is.SameAs(combat.GetPool<Event>()));
+                        Assert.That(child.DefaultFilter.GetWorld(), Is.SameAs(world));
+                        Assert.That(child.DefaultFilter.GetEntitiesCount(), Is.EqualTo(1));
+                        Assert.That(child.CombatFilter.GetWorld(), Is.SameAs(combat));
+                    }))
+                    .AddGroup("outer", true, "combat", new SFEcsGroupSystem("inner", true, "combat", child));
+
+                systems.Init();
+                systems.Run();
+
+                Assert.That(child.MatchingEntities, Is.EqualTo(new[] { included }));
+            }
+            finally
+            {
+                systems.Destroy();
+                combat.Destroy();
+                world.Destroy();
+            }
+        }
+
         private static void ChangeGroup(SFEcsWorld events, string name, bool enabled)
         {
             events.GetPool<SFEcsGroupSystemState>().Add(events.NewEntity()) =
@@ -118,6 +162,26 @@ namespace SFramework.ECS.Tests
         }
 
         private sealed class Dependency : ISFDependency { }
+
+        private sealed class InjectedEcsFieldsSystem : ISFEcsRunSystem
+        {
+            private readonly SFEcsPool<Event> _defaultPool;
+            private readonly SFEcsPool<Event> _combatPool = new("combat");
+            private readonly SFEcsFilter<Inc<Event>> _defaultFilter;
+            private readonly SFEcsFilter<Inc<Event, Keep>, Exc<Excluded>> _combatFilter = new("combat");
+
+            public SFEcsPoolNative<Event> DefaultPool => _defaultPool.Value;
+            public SFEcsPoolNative<Event> CombatPool => _combatPool.Value;
+            public SFEcsFilterNative DefaultFilter => _defaultFilter.Value;
+            public SFEcsFilterNative CombatFilter => _combatFilter.Value;
+            public List<int> MatchingEntities { get; } = new();
+
+            public void Run(ISFEcsSystems systems)
+            {
+                foreach (var entity in _combatFilter.Value)
+                    MatchingEntities.Add(entity);
+            }
+        }
 
         private sealed partial class ChildSystem : ISFInjectable, ISFInjectionCallback, ISFEcsPreInitSystem,
             ISFEcsInitSystem, ISFEcsRunSystem, ISFEcsPostRunSystem, ISFEcsDestroySystem, ISFEcsPostDestroySystem

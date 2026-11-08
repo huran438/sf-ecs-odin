@@ -7,7 +7,7 @@ namespace SFramework.ECS.Runtime
     public interface ISFEcsContext : ISFDependency
     {
         SFEcsWorld GetWorld(string name = null);
-        SFEcsPool<T> GetPool<T>(string worldName = null) where T : struct;
+        SFEcsPoolNative<T> GetPool<T>(string worldName = null) where T : struct;
         SFEcsWorld.Mask Filter<T>(string worldName = null) where T : struct;
         T GetShared<T>() where T : class;
     }
@@ -24,7 +24,7 @@ namespace SFramework.ECS.Runtime
         }
 
         public SFEcsWorld GetWorld(string name = null) => RequireWorld(_systems, name);
-        public SFEcsPool<T> GetPool<T>(string worldName = null) where T : struct => GetWorld(worldName).GetPool<T>();
+        public SFEcsPoolNative<T> GetPool<T>(string worldName = null) where T : struct => GetWorld(worldName).GetPool<T>();
         public SFEcsWorld.Mask Filter<T>(string worldName = null) where T : struct => GetWorld(worldName).Filter<T>();
         public T GetShared<T>() where T : class => _systems.GetShared<T>();
 

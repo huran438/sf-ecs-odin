@@ -65,10 +65,10 @@ namespace SFramework.ECS.Runtime
         private readonly int _poolDenseSize;
         private readonly int _poolRecycledSize;
         private readonly Dictionary<Type, ISFEcsPool> _poolHashes;
-        private readonly Dictionary<int, SFEcsFilter> _hashedFilters;
-        private readonly List<SFEcsFilter> _allFilters;
-        private List<SFEcsFilter>[] _filtersByIncludedComponents;
-        private List<SFEcsFilter>[] _filtersByExcludedComponents;
+        private readonly Dictionary<int, SFEcsFilterNative> _hashedFilters;
+        private readonly List<SFEcsFilterNative> _allFilters;
+        private List<SFEcsFilterNative>[] _filtersByIncludedComponents;
+        private List<SFEcsFilterNative>[] _filtersByExcludedComponents;
         private Mask[] _masks;
         private int _masksCount;
 
@@ -144,15 +144,15 @@ namespace SFramework.ECS.Runtime
             capacity = cfg.Pools > 0 ? cfg.Pools : Config.PoolsDefault;
             _pools = new ISFEcsPool[capacity];
             _poolHashes = new Dictionary<Type, ISFEcsPool>(capacity);
-            _filtersByIncludedComponents = new List<SFEcsFilter>[capacity];
-            _filtersByExcludedComponents = new List<SFEcsFilter>[capacity];
+            _filtersByIncludedComponents = new List<SFEcsFilterNative>[capacity];
+            _filtersByExcludedComponents = new List<SFEcsFilterNative>[capacity];
             _poolDenseSize = cfg.PoolDenseSize > 0 ? cfg.PoolDenseSize : Config.PoolDenseSizeDefault;
             _poolRecycledSize = cfg.PoolRecycledSize > 0 ? cfg.PoolRecycledSize : Config.PoolRecycledSizeDefault;
             _poolsCount = 0;
             // filters.
             capacity = cfg.Filters > 0 ? cfg.Filters : Config.FiltersDefault;
-            _hashedFilters = new Dictionary<int, SFEcsFilter>(capacity);
-            _allFilters = new List<SFEcsFilter>(capacity);
+            _hashedFilters = new Dictionary<int, SFEcsFilterNative>(capacity);
+            _allFilters = new List<SFEcsFilterNative>(capacity);
             // masks.
             _masks = new Mask[64];
             _masksCount = 0;
@@ -199,8 +199,8 @@ namespace SFramework.ECS.Runtime
             _poolHashes.Clear();
             _hashedFilters.Clear();
             _allFilters.Clear();
-            _filtersByIncludedComponents = Array.Empty<List<SFEcsFilter>>();
-            _filtersByExcludedComponents = Array.Empty<List<SFEcsFilter>>();
+            _filtersByIncludedComponents = Array.Empty<List<SFEcsFilterNative>>();
+            _filtersByExcludedComponents = Array.Empty<List<SFEcsFilterNative>>();
 #if DEBUG || SFECS_WORLD_EVENTS
             for (var ii = _eventListeners.Count - 1; ii >= 0; ii--)
             {
@@ -354,12 +354,12 @@ namespace SFramework.ECS.Runtime
             return _entities;
         }
 
-        public SFEcsPool<T> GetPool<T>() where T : struct
+        public SFEcsPoolNative<T> GetPool<T>() where T : struct
         {
             var poolType = typeof(T);
             if (_poolHashes.TryGetValue(poolType, out var rawPool))
             {
-                return (SFEcsPool<T>)rawPool;
+                return (SFEcsPoolNative<T>)rawPool;
             }
 #if DEBUG
             if (_poolsCount == short.MaxValue)
@@ -367,7 +367,7 @@ namespace SFramework.ECS.Runtime
                 throw new Exception("No more room for new component into this world.");
             }
 #endif
-            var pool = new SFEcsPool<T>(this, _poolsCount, _poolDenseSize, GetWorldSize(), _poolRecycledSize);
+            var pool = new SFEcsPoolNative<T>(this, _poolsCount, _poolDenseSize, GetWorldSize(), _poolRecycledSize);
             _poolHashes[poolType] = pool;
             if (_poolsCount == _pools.Length)
             {
@@ -552,7 +552,7 @@ namespace SFramework.ECS.Runtime
             _entities = newEntities;
         }
 
-        private (SFEcsFilter, bool) GetFilterInternal(Mask mask, int capacity = 512)
+        private (SFEcsFilterNative, bool) GetFilterInternal(Mask mask, int capacity = 512)
         {
             var hash = mask.Hash;
             var exists = _hashedFilters.TryGetValue(hash, out var filter);
@@ -560,7 +560,7 @@ namespace SFramework.ECS.Runtime
             {
                 return (filter, false);
             }
-            filter = new SFEcsFilter(this, mask, capacity, GetWorldSize());
+            filter = new SFEcsFilterNative(this, mask, capacity, GetWorldSize());
             _hashedFilters[hash] = filter;
             _allFilters.Add(filter);
             // add to component dictionaries for fast compatibility scan.
@@ -569,7 +569,7 @@ namespace SFramework.ECS.Runtime
                 var list = _filtersByIncludedComponents[mask.Include[i]];
                 if (list == null)
                 {
-                    list = new List<SFEcsFilter>(8);
+                    list = new List<SFEcsFilterNative>(8);
                     _filtersByIncludedComponents[mask.Include[i]] = list;
                 }
                 list.Add(filter);
@@ -579,7 +579,7 @@ namespace SFramework.ECS.Runtime
                 var list = _filtersByExcludedComponents[mask.Exclude[i]];
                 if (list == null)
                 {
-                    list = new List<SFEcsFilter>(8);
+                    list = new List<SFEcsFilterNative>(8);
                     _filtersByExcludedComponents[mask.Exclude[i]] = list;
                 }
                 list.Add(filter);
@@ -831,7 +831,7 @@ namespace SFramework.ECS.Runtime
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public SFEcsFilter End(int capacity = 512)
+            public SFEcsFilterNative End(int capacity = 512)
             {
 #if DEBUG && !SFECS_NO_SANITIZE_CHECKS
                 if (_built)
@@ -882,7 +882,7 @@ namespace SFramework.ECS.Runtime
         void OnEntityCreated(int entity);
         void OnEntityChanged(int entity, short poolId, bool added);
         void OnEntityDestroyed(int entity);
-        void OnFilterCreated(SFEcsFilter filter);
+        void OnFilterCreated(SFEcsFilterNative filter);
         void OnWorldResized(int newSize);
         void OnWorldDestroyed(SFEcsWorld world);
     }

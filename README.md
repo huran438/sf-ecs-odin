@@ -25,7 +25,7 @@ Choose this package or [SF ECS](https://github.com/huran438/sf-ecs), since both 
 
 Install the transitive dependencies of SF Core and SF Configs too: SF Debug, UniTask, and Newtonsoft.Json. The required Sirenix DLLs must be present. Generated providers use ordinary Unity attributes. Regenerate older providers that still include the `IL2CPP_OPTIMIZATIONS` block before using that define in a player build.
 
-`SFEcsWorld`, `SFEcsPool<T>`, `SFEcsFilter`, packed entities, and system interfaces are included in `SFramework.ECS.Runtime`. The kernel supports IL2CPP and the `SFECS_FILTER_EVENTS`, `SFECS_WORLD_EVENTS`, and `SFECS_NO_SANITIZE_CHECKS` scripting defines.
+`SFEcsWorld`, `SFEcsPoolNative<T>`, `SFEcsFilterNative`, packed entities, and system interfaces are included in `SFramework.ECS.Runtime`. The kernel supports IL2CPP and the `SFECS_FILTER_EVENTS`, `SFECS_WORLD_EVENTS`, and `SFECS_NO_SANITIZE_CHECKS` scripting defines.
 
 ### Migrating existing systems
 
@@ -36,15 +36,15 @@ The runtime sources live directly in `Runtime`, alongside the authoring integrat
 | Previous type | Current type |
 | --- | --- |
 | `EcsWorld` | `SFEcsWorld` |
-| `EcsPool<T>` | `SFEcsPool<T>` |
-| `EcsFilter` | `SFEcsFilter` |
+| `EcsPool<T>` | `SFEcsPoolNative<T>` |
+| `EcsFilter` | `SFEcsFilterNative` |
 | `EcsSystems` / `IEcsSystems` | `SFEcsSystems` / `ISFEcsSystems` |
 | `EcsPackedEntity` / `EcsPackedEntityWithWorld` | `SFEcsPackedEntity` / `SFEcsPackedEntityWithWorld` |
 | `IEcsRunSystem`, `IEcsInitSystem`, other `IEcs*` contracts | `ISFEcsRunSystem`, `ISFEcsInitSystem`, other `ISFEcs*` contracts |
 
 The existing `ISFSystem` authoring marker and `SFEntity.EcsPackedEntity` property keep their names. `.editorconfig` defines the package's C# formatting conventions.
 
-Use automatic mutable service fields on a partial `ISFInjectable` system (or derive from `SFSystem`). Inject `ISFEcsContext` for pipeline-scoped worlds, pools, filters, and shared data. See [ECS dependency injection](#ecs-dependency-injection) for setup.
+Use automatic mutable service fields on a partial `ISFInjectable` system (or derive from `SFSystem`). Declare pools and filters as `readonly` ECS fields and inject `ISFEcsContext` for world lookup and shared data. See [ECS dependency injection](#ecs-dependency-injection) for setup.
 
 `SFEcsSystems.Init()` injects all `ISFInjectable` systems through `SFContainer` before any `PreInit` or `Init` callback, including manually built pipelines. Register services before calling `Init`; a separate `.Inject()` call is no longer needed. Each system receives injection once per pipeline initialization, and existing lifecycle callbacks keep their order. SFInject was removed; migrate properties/methods to fields and lifecycle hooks.
 
@@ -200,24 +200,28 @@ For pipelines you build yourself, `SFExtensions.Add(ISFSystem[])` accepts indivi
 
 ### ECS dependency injection
 
-Declare a mutable `ISFEcsContext` field on a partial system. SF Core fills the field alongside ordinary service dependencies. Cache the pools and filters you need in `ISFInjectionCallback.OnDependenciesInjected()` or in `Init()`.
+Declare pools and filters as `readonly` fields. `SFEcsSystems.Init()` creates and binds the wrappers before the lifecycle callbacks. Read the native pool or filter through `.Value`.
 
 ```csharp
-public sealed partial class MoveSystem : SFSystem, ISFInjectionCallback
+public sealed partial class MoveSystem : SFSystem
 {
-    private ISFEcsContext _ecs;
-    private SFEcsPool<Position> _positions;
-    private SFEcsFilter _moving;
+    private readonly SFEcsPool<Position> _positions;
+    private readonly SFEcsPool<Velocity> _velocities;
+    private readonly SFEcsFilter<Inc<Position, Velocity>, Exc<Paused>> _moving;
 
-    public void OnDependenciesInjected()
+    protected override void Tick(ref ISFEcsSystems systems)
     {
-        _positions = _ecs.GetPool<Position>();
-        _moving = _ecs.Filter<Position>().Inc<Velocity>().End();
+        foreach (var entity in _moving.Value)
+            _positions.Value.Get(entity).X += _velocities.Value.Get(entity).X;
     }
 }
 ```
 
-Use `GetWorld(name)`, `GetPool<T>(name)`, and `Filter<T>(name)` for named worlds. Register names with `AddWorld()` on standalone pipelines. Configured pipelines expose all configured worlds under their full IDs, such as `Gameplay/Events`. An omitted name selects the pipeline's own world. Unknown names throw. `GetShared<T>()` returns the optional shared object passed to `new SFEcsSystems(world, shared)`. Register custom application dependencies through SF Core and inject them in separate fields.
+Use `SFEcsFilter<Inc<Position, Velocity>>` when the filter has only includes. A field without an initializer uses the pipeline's own world. For a named world, initialize the field with its name, for example `private readonly SFEcsPool<MovementEvent> _events = new("events");`. Register the name with `AddWorld()` on standalone pipelines. Configured pipelines expose worlds under full IDs such as `Gameplay/Events`. Unknown names throw.
+
+The pipeline binds fields on every registered system, including plain `ISFEcsSystem` implementations and nested group children. In objects outside the pipeline, call `EcsFieldInjector.Bind(this, world)` to bind the same declarations to the supplied world. Use `GetPool<T>()` and `Filter<T>().End()` for direct access to `SFEcsPoolNative<T>` and `SFEcsFilterNative`.
+
+Inject `ISFEcsContext` to look up a world dynamically or access the optional pipeline shared object with `GetShared<T>()`. SF Core supplies registered application services through separate mutable fields on partial systems.
 
 ### Switchable groups and event cleanup
 
@@ -229,7 +233,7 @@ pipeline.AddWorld(events, "events")
 pipeline.Init();
 ```
 
-`DelHere<T>()` removes that component at its position in the run phase and preserves other components on the same entity. Use a unique group name within each event world. To switch a group, add an `SFEcsGroupSystemState` component to an entity in that world and set its `Name` and `State`. The group consumes matching events before its run and post-run callbacks. Disabled groups still initialize and shut down their children. Nested children receive SF Core injection before any system begins PreInit. For a configured pipeline, use concrete subclasses of `SFEcsGroupSystem` or `SFEcsDelHereSystem<T>` with public parameterless constructors.
+`DelHere<T>()` removes that component at its position in the run phase and preserves other components on the same entity. Use a unique group name within each event world. To switch a group, add an `SFEcsGroupSystemState` component to an entity in that world and set its `Name` and `State`. The group consumes matching events before its run and post-run callbacks. Disabled groups still initialize and shut down their children. Nested children receive SF Core and ECS field injection before any system begins PreInit. For a configured pipeline, use concrete subclasses of `SFEcsGroupSystem` or `SFEcsDelHereSystem<T>` with public parameterless constructors.
 
 ### ECS Monitor
 

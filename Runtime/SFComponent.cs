@@ -13,7 +13,7 @@ namespace SFramework.ECS.Runtime
         protected T _value;
 
         private SFEcsPackedEntityWithWorld _packedEntityWithWorld;
-        private SFEcsPool<T> _pool;
+        private SFEcsPoolNative<T> _pool;
 
         public void Setup(ref SFEcsPackedEntityWithWorld packedEntity)
         {

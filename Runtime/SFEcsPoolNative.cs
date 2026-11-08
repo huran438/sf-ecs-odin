@@ -40,7 +40,7 @@ namespace SFramework.ECS.Runtime
     [Il2CppSetOption(Option.NullChecks, false)]
     [Il2CppSetOption(Option.ArrayBoundsChecks, false)]
 #endif
-    public sealed class SFEcsPool<T> : ISFEcsPool where T : struct
+    public sealed class SFEcsPoolNative<T> : ISFEcsPool where T : struct
     {
         private readonly Type _type;
         private readonly SFEcsWorld _world;
@@ -57,7 +57,7 @@ namespace SFramework.ECS.Runtime
         private T _fakeInstance;
 #endif
 
-        internal SFEcsPool(SFEcsWorld world, short id, int denseCapacity, int sparseCapacity, int recycledCapacity)
+        internal SFEcsPoolNative(SFEcsWorld world, short id, int denseCapacity, int sparseCapacity, int recycledCapacity)
         {
             _type = typeof(T);
             _world = world;

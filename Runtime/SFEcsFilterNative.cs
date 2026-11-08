@@ -24,7 +24,7 @@ namespace SFramework.ECS.Runtime
     [Il2CppSetOption(Option.NullChecks, false)]
     [Il2CppSetOption(Option.ArrayBoundsChecks, false)]
 #endif
-    public sealed class SFEcsFilter
+    public sealed class SFEcsFilterNative
     {
         private readonly SFEcsWorld _world;
         private readonly SFEcsWorld.Mask _mask;
@@ -39,7 +39,7 @@ namespace SFramework.ECS.Runtime
         private int _eventListenersCount;
 #endif
 
-        internal SFEcsFilter(SFEcsWorld world, SFEcsWorld.Mask mask, int denseCapacity, int sparseCapacity)
+        internal SFEcsFilterNative(SFEcsWorld world, SFEcsWorld.Mask mask, int denseCapacity, int sparseCapacity)
         {
             _world = world;
             _mask = mask;
@@ -230,12 +230,12 @@ namespace SFramework.ECS.Runtime
 
         public struct Enumerator : IDisposable
         {
-            private readonly SFEcsFilter _filter;
+            private readonly SFEcsFilterNative _filter;
             private readonly int[] _entities;
             private readonly int _count;
             private int _idx;
 
-            public Enumerator(SFEcsFilter filter)
+            public Enumerator(SFEcsFilterNative filter)
             {
                 _filter = filter;
                 _entities = filter._denseEntities;
