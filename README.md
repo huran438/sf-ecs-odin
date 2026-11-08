@@ -2,7 +2,7 @@
 
 # SF ECS Odin
 
-Configured **LeoECS Lite** worlds, Unity entity authoring, and system lifecycle integration for SFramework, with Odin Inspector attributes.
+Configured ECS worlds, Unity entity authoring, and system lifecycle integration for SFramework, with Odin Inspector attributes.
 
 ![Package version](https://img.shields.io/badge/package-0.1.0-334155) ![License](https://img.shields.io/badge/license-MIT-334155)
 
@@ -22,7 +22,7 @@ The package ID is `sp.sframework.ecs.odin`, version `0.1.0`. [package.json](pack
 | --- | --- |
 | `SFramework.Core.Runtime`, `SFramework.Core.Editor` | [SF Core](https://github.com/huran438/sf-core); container, view injection, and editor tools. |
 | `SFramework.Configs.Runtime` | [SF Configs](https://github.com/huran438/sf-configs); world configuration and ID selection. |
-| `Leopotam.EcsLite`, `Leopotam.EcsLite.Di` | Compatible LeoECS Lite and its DI integration. |
+| `Leopotam.EcsLite`, `Leopotam.EcsLite.Di` | External ECS runtime and its DI integration. |
 | `UniTask` | Service initialization. |
 | Odin Inspector / Serializer | A separately licensed installation supplying the referenced Sirenix DLLs. This package does not bundle Odin. |
 

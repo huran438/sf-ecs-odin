@@ -3,10 +3,10 @@
   "name": "sp.sframework.ecs.odin",
   "displayName": "SF ECS Odin",
   "version": "0.1.0",
-  "description": "LeoEcs Lite Module",
+  "description": "SFramework ECS with Odin authoring",
   "keywords": [
     "ecs",
-    "leoecs"
+    "odin"
   ],
   "category": "SFramework",
   "type": "library"
